@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          achievements: Json | null
+          created_at: string | null
+          email: string
+          gamer_tag: string
+          id: string
+          phone: string | null
+          rank: string | null
+          region: string | null
+          subscription_status: boolean | null
+          updated_at: string | null
+          wallet_balance: number | null
+        }
+        Insert: {
+          achievements?: Json | null
+          created_at?: string | null
+          email: string
+          gamer_tag: string
+          id: string
+          phone?: string | null
+          rank?: string | null
+          region?: string | null
+          subscription_status?: boolean | null
+          updated_at?: string | null
+          wallet_balance?: number | null
+        }
+        Update: {
+          achievements?: Json | null
+          created_at?: string | null
+          email?: string
+          gamer_tag?: string
+          id?: string
+          phone?: string | null
+          rank?: string | null
+          region?: string | null
+          subscription_status?: boolean | null
+          updated_at?: string | null
+          wallet_balance?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
