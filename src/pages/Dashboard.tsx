@@ -1,148 +1,179 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Trophy, Coins, TrendingUp, Calendar, Award, Users } from "lucide-react";
+import { Trophy, Coins, Target, Award } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Profile {
+  gamer_tag: string;
+  email: string;
+  phone: string | null;
+  region: string;
+  rank: string;
+  wallet_balance: number;
+  achievements: any;
+  subscription_status: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 const Dashboard = () => {
-  // Mock data - will be replaced with real data from Lovable Cloud
-  const userData = {
-    name: "John Kamau",
-    rank: "Elite Gamer",
-    tokenBalance: 850,
-    activeTournaments: 3,
-    wins: 12,
-    totalEarnings: 2400
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
+
+  const loadProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user?.id)
+        .single();
+
+      if (error) throw error;
+      setProfile(data as Profile);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to load profile data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingProfile(false);
+    }
   };
 
-  const upcomingTournaments = [
-    { name: "Nairobi Championship", game: "FIFA 24", date: "2025-01-15", prize: 500 },
-    { name: "Mombasa Showdown", game: "COD", date: "2025-01-18", prize: 800 },
-  ];
+  if (loading || loadingProfile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const recentAchievements = [
-    { title: "First Victory", description: "Won your first tournament", icon: Trophy },
-    { title: "Token Collector", description: "Earned 500+ GZC tokens", icon: Coins },
-    { title: "Active Member", description: "30 days streak", icon: TrendingUp },
-  ];
+  if (!user || !profile) return null;
+
+  const achievementCount = Array.isArray(profile.achievements) ? profile.achievements.length : 0;
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
-      <div className="pt-24 pb-20">
-        <div className="container mx-auto px-4">
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              Welcome back, <span className="bg-gradient-gold bg-clip-text text-transparent">{userData.name}</span>
+
+      <div className="container mx-auto px-4 py-12 pt-24">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-gold bg-clip-text text-transparent mb-2">
+              Welcome, {profile.gamer_tag}
             </h1>
-            <Badge className="bg-neon-cyan text-background">{userData.rank}</Badge>
+            <p className="text-muted-foreground">
+              {profile.region} • {profile.rank}
+            </p>
           </div>
+          <Button onClick={signOut} variant="outline">
+            Sign Out
+          </Button>
+        </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-card border-border hover:border-primary/50 transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Token Balance</p>
-                    <p className="text-2xl font-bold text-primary">{userData.tokenBalance} GZC</p>
-                  </div>
-                  <Coins className="w-10 h-10 text-primary" />
-                </div>
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">GZ Tokens</CardTitle>
+              <Coins className="h-4 w-4 text-neon-cyan" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-neon-cyan">{profile.wallet_balance}</div>
+              <p className="text-xs text-muted-foreground">Available balance</p>
+            </CardContent>
+          </Card>
 
-            <Card className="bg-card border-border hover:border-neon-cyan/50 transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Active Tournaments</p>
-                    <p className="text-2xl font-bold text-neon-cyan">{userData.activeTournaments}</p>
-                  </div>
-                  <Calendar className="w-10 h-10 text-neon-cyan" />
-                </div>
-              </CardContent>
-            </Card>
+          <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Rank</CardTitle>
+              <Target className="h-4 w-4 text-neon-pink" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{profile.rank}</div>
+              <p className="text-xs text-muted-foreground">{profile.region} region</p>
+            </CardContent>
+          </Card>
 
-            <Card className="bg-card border-border hover:border-neon-green/50 transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total Wins</p>
-                    <p className="text-2xl font-bold text-neon-green">{userData.wins}</p>
-                  </div>
-                  <Trophy className="w-10 h-10 text-neon-green" />
-                </div>
-              </CardContent>
-            </Card>
+          <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Subscription</CardTitle>
+              <Trophy className="h-4 w-4 text-neon-green" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {profile.subscription_status ? "Active" : "Inactive"}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {profile.subscription_status ? "KES 2,800 - Paid" : "Upgrade now"}
+              </p>
+            </CardContent>
+          </Card>
 
-            <Card className="bg-card border-border hover:border-neon-pink/50 transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total Earnings</p>
-                    <p className="text-2xl font-bold text-neon-pink">{userData.totalEarnings} GZC</p>
-                  </div>
-                  <TrendingUp className="w-10 h-10 text-neon-pink" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Achievements</CardTitle>
+              <Award className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{achievementCount}</div>
+              <p className="text-xs text-muted-foreground">Badges earned</p>
+            </CardContent>
+          </Card>
+        </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Upcoming Tournaments */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  Upcoming Tournaments
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {upcomingTournaments.map((tournament, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-background rounded-lg border border-border">
-                    <div>
-                      <h4 className="font-semibold">{tournament.name}</h4>
-                      <p className="text-sm text-muted-foreground">{tournament.game}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{tournament.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-neon-cyan font-semibold">{tournament.prize} GZC</p>
-                      <Button variant="tournament" size="sm" className="mt-2">
-                        View
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                <Button variant="outline" className="w-full">
-                  View All Tournaments
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle>Active Tournaments</CardTitle>
+              <CardDescription>Join a tournament and earn rewards</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-muted-foreground">
+                <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No active tournaments yet</p>
+                <Button className="mt-4" onClick={() => navigate("/tournaments")}>
+                  View Tournaments
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Recent Achievements */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-primary" />
-                  Recent Achievements
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {recentAchievements.map((achievement, index) => (
-                  <div key={index} className="flex items-start gap-4 p-4 bg-background rounded-lg border border-border">
-                    <achievement.icon className="w-8 h-8 text-primary flex-shrink-0" />
-                    <div>
-                      <h4 className="font-semibold">{achievement.title}</h4>
-                      <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Your latest actions on GRIDZ</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No recent activity</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 

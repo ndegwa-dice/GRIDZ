@@ -1,19 +1,64 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gamepad2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Login logic will be implemented later with Lovable Cloud
-    console.log("Login attempt:", { email, password });
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Welcome back!",
+        description: "You've successfully logged in to GRIDZ.",
+      });
+
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid email or password",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -67,8 +112,8 @@ const Login = () => {
                 />
               </div>
 
-              <Button type="submit" variant="hero" className="w-full">
-                Sign In
+              <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+                {loading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
 
@@ -83,10 +128,10 @@ const Login = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-4">
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
                   Google
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" disabled>
                   Phone
                 </Button>
               </div>

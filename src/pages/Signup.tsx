@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gamepad2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -14,11 +16,63 @@ const Signup = () => {
     password: "",
     confirmPassword: ""
   });
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Signup logic will be implemented later with Lovable Cloud
-    console.log("Signup attempt:", formData);
+
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+          data: {
+            gamer_tag: formData.name,
+            phone: formData.phone,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Welcome to GRIDZ!",
+        description: "Your account has been created successfully.",
+      });
+
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Signup Failed",
+        description: error.message || "An error occurred during signup",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,6 +80,23 @@ const Signup = () => {
       ...prev,
       [e.target.id]: e.target.value
     }));
+  };
+
+  const handleGoogleSignup = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -50,11 +121,11 @@ const Signup = () => {
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">Gamer Tag</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="John Kamau"
+                  placeholder="xXProGamerXx"
                   value={formData.name}
                   onChange={handleChange}
                   required
@@ -67,7 +138,7 @@ const Signup = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="john@example.com"
+                  placeholder="gamer@gridz.ke"
                   value={formData.email}
                   onChange={handleChange}
                   required
@@ -76,14 +147,13 @@ const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">Phone Number (Optional)</Label>
                 <Input
                   id="phone"
                   type="tel"
                   placeholder="+254 712 345 678"
                   value={formData.phone}
                   onChange={handleChange}
-                  required
                   className="bg-background border-border"
                 />
               </div>
@@ -112,14 +182,14 @@ const Signup = () => {
                 />
               </div>
 
-              <Button type="submit" variant="hero" className="w-full">
-                Create Account
+              <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+                {loading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
 
             <div className="mt-6">
               <div className="relative">
-                <div className="absolute inset-0 flex items-center">
+                <div className="absolute inset-0 flex-items-inline">
                   <div className="w-full border-t border-border"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
@@ -128,10 +198,10 @@ const Signup = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-4">
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={handleGoogleSignup}>
                   Google
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" disabled>
                   Phone
                 </Button>
               </div>
