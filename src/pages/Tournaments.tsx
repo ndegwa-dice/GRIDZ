@@ -1,11 +1,15 @@
+import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Users, Coins, Calendar } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Tournaments = () => {
+  const { user } = useAuth();
+  
   const tournaments = [
     {
       id: 1,
@@ -148,13 +152,21 @@ const Tournaments = () => {
                     </div>
                   </div>
                   
-                  <Button 
-                    variant={tournament.status === "Open" ? "tournament" : "secondary"}
-                    className="w-full"
-                    disabled={tournament.status !== "Open"}
-                  >
-                    {tournament.status === "Open" ? "Join Tournament" : "Tournament Full"}
-                  </Button>
+                  {tournament.status === "Open" ? (
+                    user ? (
+                      <Button variant="tournament" className="w-full">
+                        Join Tournament
+                      </Button>
+                    ) : (
+                      <Button variant="tournament" className="w-full" asChild>
+                        <Link to="/signup">Sign Up to Join</Link>
+                      </Button>
+                    )
+                  ) : (
+                    <Button variant="secondary" className="w-full" disabled>
+                      Tournament Full
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}

@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Target, Lightbulb, Users, Zap } from "lucide-react";
 
@@ -130,9 +132,12 @@ const About = () => {
               <p className="text-lg text-muted-foreground mb-6">
                 Every subscription builds opportunity. Every token builds trust. Every game builds legacy.
               </p>
-              <p className="text-xl font-semibold bg-gradient-gold bg-clip-text text-transparent">
+              <p className="text-xl font-semibold bg-gradient-gold bg-clip-text text-transparent mb-8">
                 Play Bold. Build Legacy. Own Tomorrow.
               </p>
+              <Button variant="hero" size="lg" className="text-lg px-8 py-6" asChild>
+                <Link to="/signup">Get Started Today</Link>
+              </Button>
             </div>
           </div>
         </div>
