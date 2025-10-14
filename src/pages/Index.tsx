@@ -80,16 +80,12 @@ const Index = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/signup">
-                <Button variant="hero" size="lg" className="text-lg px-8 py-6">
-                  Join GRIDZ Now
-                </Button>
-              </Link>
-              <Link to="/tournaments">
-                <Button variant="neon" size="lg" className="text-lg px-8 py-6">
-                  View Tournaments
-                </Button>
-              </Link>
+              <Button variant="hero" size="lg" className="text-lg px-8 py-6" asChild>
+                <Link to="/signup">Join GRIDZ Now</Link>
+              </Button>
+              <Button variant="neon" size="lg" className="text-lg px-8 py-6" asChild>
+                <Link to="/tournaments">View Tournaments</Link>
+              </Button>
             </div>
             
             <div className="mt-12 flex flex-wrap justify-center gap-8 text-sm">
@@ -186,11 +182,9 @@ const Index = () => {
             <p className="text-xl text-muted-foreground mb-8">
               Join thousands of gamers building Kenya's digital future
             </p>
-            <Link to="/signup">
-              <Button variant="hero" size="lg" className="text-lg px-12 py-6 animate-glow">
-                Start Your Journey
-              </Button>
-            </Link>
+            <Button variant="hero" size="lg" className="text-lg px-12 py-6 animate-glow" asChild>
+              <Link to="/signup">Start Your Journey</Link>
+            </Button>
             <p className="text-sm text-muted-foreground mt-4">
               Membership: KES 2,800/month • First week free
             </p>
