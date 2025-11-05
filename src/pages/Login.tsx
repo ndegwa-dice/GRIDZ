@@ -7,6 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Gamepad2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().trim().email("Invalid email format").max(255, "Email too long"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -17,12 +23,26 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate input before submission
+    const validation = loginSchema.safeParse({ email, password });
+    
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast({
+        title: "Validation Error",
+        description: firstError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: validation.data.email,
+        password: validation.data.password,
       });
 
       if (error) throw error;

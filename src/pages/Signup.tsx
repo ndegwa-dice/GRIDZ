@@ -7,6 +7,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Gamepad2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const signupSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(3, "Gamer tag must be at least 3 characters")
+    .max(20, "Gamer tag must be less than 20 characters")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Gamer tag can only contain letters, numbers, dashes and underscores"),
+  email: z.string().trim().email("Invalid email format").max(255, "Email too long"),
+  phone: z.string().trim().regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number format").optional().or(z.literal("")),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/^(?=.*[A-Za-z])(?=.*\d)/, "Password must contain at least one letter and one number"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -23,19 +41,14 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
+    // Validate all inputs before submission
+    const validation = signupSchema.safeParse(formData);
+    
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
       toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match. Please try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast({
-        title: "Weak Password",
-        description: "Password must be at least 6 characters long.",
+        title: "Validation Error",
+        description: firstError.message,
         variant: "destructive",
       });
       return;
@@ -45,13 +58,13 @@ const Signup = () => {
 
     try {
       const { error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
+        email: validation.data.email,
+        password: validation.data.password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
           data: {
-            gamer_tag: formData.name,
-            phone: formData.phone,
+            gamer_tag: validation.data.name,
+            phone: validation.data.phone || null,
           },
         },
       });
