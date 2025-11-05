@@ -6,78 +6,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Users, Coins, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTournaments } from "@/hooks/useTournaments";
+import { useState, useEffect } from "react";
 
 const Tournaments = () => {
   const { user } = useAuth();
-  
-  const tournaments = [
-    {
-      id: 1,
-      name: "Nairobi Championship Series",
-      game: "FIFA 24",
-      entryFee: 20,
-      prizePool: 500,
-      participants: 64,
-      maxParticipants: 128,
-      startDate: "2025-01-15",
-      status: "Open"
-    },
-    {
-      id: 2,
-      name: "Mombasa Showdown",
-      game: "Call of Duty",
-      entryFee: 30,
-      prizePool: 800,
-      participants: 42,
-      maxParticipants: 64,
-      startDate: "2025-01-18",
-      status: "Open"
-    },
-    {
-      id: 3,
-      name: "Kisumu Elite League",
-      game: "Valorant",
-      entryFee: 25,
-      prizePool: 600,
-      participants: 88,
-      maxParticipants: 128,
-      startDate: "2025-01-20",
-      status: "Open"
-    },
-    {
-      id: 4,
-      name: "Nakuru Pro Circuit",
-      game: "Rocket League",
-      entryFee: 15,
-      prizePool: 400,
-      participants: 128,
-      maxParticipants: 128,
-      startDate: "2025-01-12",
-      status: "Full"
-    },
-    {
-      id: 5,
-      name: "Eldoret Masters",
-      game: "League of Legends",
-      entryFee: 35,
-      prizePool: 1000,
-      participants: 96,
-      maxParticipants: 128,
-      startDate: "2025-01-25",
-      status: "Open"
-    },
-    {
-      id: 6,
-      name: "Thika Weekend Clash",
-      game: "Fortnite",
-      entryFee: 20,
-      prizePool: 500,
-      participants: 54,
-      maxParticipants: 100,
-      startDate: "2025-01-22",
-      status: "Open"
+  const { tournaments, loading, joinTournament, checkUserInTournament } = useTournaments();
+  const [joiningTournament, setJoiningTournament] = useState<string | null>(null);
+  const [userTournaments, setUserTournaments] = useState<Set<string>>(new Set());
+
+  // Check which tournaments the user has joined
+  useEffect(() => {
+    if (user && tournaments.length > 0) {
+      tournaments.forEach(async (tournament) => {
+        const isJoined = await checkUserInTournament(tournament.id, user.id);
+        if (isJoined) {
+          setUserTournaments(prev => new Set(prev).add(tournament.id));
+        }
+      });
     }
-  ];
+  }, [user, tournaments]);
+
+  const handleJoinTournament = async (tournamentId: string) => {
+    if (!user) return;
+    
+    setJoiningTournament(tournamentId);
+    const success = await joinTournament(tournamentId, user.id);
+    
+    if (success) {
+      setUserTournaments(prev => new Set(prev).add(tournamentId));
+    }
+    
+    setJoiningTournament(null);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,81 +57,102 @@ const Tournaments = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tournaments.map((tournament) => (
-              <Card 
-                key={tournament.id}
-                className="bg-card border-border hover:border-accent transition-all duration-300 hover:shadow-glow-cyan"
-              >
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <CardTitle className="text-xl">{tournament.name}</CardTitle>
-                    <Badge 
-                      variant={tournament.status === "Open" ? "default" : "secondary"}
-                      className={tournament.status === "Open" ? "bg-neon-green text-background" : ""}
-                    >
-                      {tournament.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{tournament.game}</p>
-                </CardHeader>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading tournaments...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tournaments.map((tournament) => {
+                const isJoined = userTournaments.has(tournament.id);
+                const isJoining = joiningTournament === tournament.id;
                 
-                <CardContent>
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <Coins className="w-4 h-4 text-primary" />
-                        <span className="text-muted-foreground">Entry Fee</span>
+                return (
+                <Card 
+                  key={tournament.id}
+                  className="bg-card border-border hover:border-accent transition-all duration-300 hover:shadow-glow-cyan"
+                >
+                  <CardHeader>
+                    <div className="flex justify-between items-start mb-2">
+                      <CardTitle className="text-xl">{tournament.name}</CardTitle>
+                      <Badge 
+                        variant={tournament.status === "Open" ? "default" : "secondary"}
+                        className={tournament.status === "Open" ? "bg-neon-green text-background" : ""}
+                      >
+                        {tournament.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{tournament.game}</p>
+                  </CardHeader>
+                
+                  <CardContent>
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Coins className="w-4 h-4 text-primary" />
+                          <span className="text-muted-foreground">Entry Fee</span>
+                        </div>
+                        <span className="font-semibold">{tournament.entry_fee} GZC</span>
                       </div>
-                      <span className="font-semibold">{tournament.entryFee} GZC</span>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-neon-cyan" />
+                          <span className="text-muted-foreground">Prize Pool</span>
+                        </div>
+                        <span className="font-semibold text-neon-cyan">{tournament.prize_pool} GZC</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-neon-pink" />
+                          <span className="text-muted-foreground">Players</span>
+                        </div>
+                        <span className="font-semibold">
+                          {tournament.participants || 0}/{tournament.max_participants}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-neon-green" />
+                          <span className="text-muted-foreground">Starts</span>
+                        </div>
+                        <span className="font-semibold">{tournament.start_date}</span>
+                      </div>
                     </div>
                     
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <Trophy className="w-4 h-4 text-neon-cyan" />
-                        <span className="text-muted-foreground">Prize Pool</span>
-                      </div>
-                      <span className="font-semibold text-neon-cyan">{tournament.prizePool} GZC</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-neon-pink" />
-                        <span className="text-muted-foreground">Players</span>
-                      </div>
-                      <span className="font-semibold">
-                        {tournament.participants}/{tournament.maxParticipants}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-neon-green" />
-                        <span className="text-muted-foreground">Starts</span>
-                      </div>
-                      <span className="font-semibold">{tournament.startDate}</span>
-                    </div>
-                  </div>
-                  
-                  {tournament.status === "Open" ? (
-                    user ? (
-                      <Button variant="tournament" className="w-full">
-                        Join Tournament
+                    {isJoined ? (
+                      <Button variant="secondary" className="w-full" disabled>
+                        Already Joined ✓
                       </Button>
+                    ) : tournament.status === "Open" ? (
+                      user ? (
+                        <Button 
+                          variant="tournament" 
+                          className="w-full"
+                          onClick={() => handleJoinTournament(tournament.id)}
+                          disabled={isJoining}
+                        >
+                          {isJoining ? "Joining..." : "Join Tournament"}
+                        </Button>
+                      ) : (
+                        <Button variant="tournament" className="w-full" asChild>
+                          <Link to="/signup">Sign Up to Join</Link>
+                        </Button>
+                      )
                     ) : (
-                      <Button variant="tournament" className="w-full" asChild>
-                        <Link to="/signup">Sign Up to Join</Link>
+                      <Button variant="secondary" className="w-full" disabled>
+                        Tournament Full
                       </Button>
-                    )
-                  ) : (
-                    <Button variant="secondary" className="w-full" disabled>
-                      Tournament Full
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+            </div>
+          )}
         </div>
       </div>
 

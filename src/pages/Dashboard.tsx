@@ -8,6 +8,7 @@ import { Trophy, Coins, Target, Award } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTournaments, Tournament } from "@/hooks/useTournaments";
 
 interface Profile {
   gamer_tag: string;
@@ -28,6 +29,8 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const { getUserTournaments } = useTournaments();
+  const [userTournaments, setUserTournaments] = useState<Tournament[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -38,8 +41,67 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       loadProfile();
+      loadUserTournaments();
+      subscribeToProfileChanges();
+      subscribeToTournamentChanges();
     }
   }, [user]);
+
+  const loadUserTournaments = async () => {
+    if (!user) return;
+    const tournaments = await getUserTournaments(user.id);
+    setUserTournaments(tournaments as Tournament[]);
+  };
+
+  const subscribeToProfileChanges = () => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Profile updated:', payload);
+          setProfile(payload.new as Profile);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const subscribeToTournamentChanges = () => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('user-tournaments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tournament_participants',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          console.log('Tournament participation changed, reloading...');
+          loadUserTournaments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const loadProfile = async () => {
     try {
@@ -150,16 +212,41 @@ const Dashboard = () => {
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle>Active Tournaments</CardTitle>
-              <CardDescription>Join a tournament and earn rewards</CardDescription>
+              <CardDescription>Tournaments you've joined</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No active tournaments yet</p>
-                <Button className="mt-4" onClick={() => navigate("/tournaments")}>
-                  View Tournaments
-                </Button>
-              </div>
+              {userTournaments.length > 0 ? (
+                <div className="space-y-3">
+                  {userTournaments.map((tournament) => (
+                    <div 
+                      key={tournament.id}
+                      className="p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h4 className="font-semibold">{tournament.name}</h4>
+                          <p className="text-sm text-muted-foreground">{tournament.game}</p>
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded bg-neon-green/20 text-neon-green">
+                          {tournament.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                        <span>🏆 {tournament.prize_pool} GZC</span>
+                        <span>📅 {tournament.start_date}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No active tournaments yet</p>
+                  <Button className="mt-4" onClick={() => navigate("/tournaments")}>
+                    View Tournaments
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
