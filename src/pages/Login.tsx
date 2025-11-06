@@ -18,6 +18,8 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [showResendPrompt, setShowResendPrompt] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -38,14 +40,26 @@ const Login = () => {
     }
 
     setLoading(true);
+    setShowResendPrompt(false);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: validation.data.email,
         password: validation.data.password,
       });
 
       if (error) throw error;
+
+      // Check if email is confirmed
+      if (data?.user && !data.user.email_confirmed_at) {
+        setShowResendPrompt(true);
+        toast({
+          title: "Email Not Confirmed",
+          description: "Please check your email and confirm your account before logging in.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: "Welcome back!",
@@ -54,13 +68,61 @@ const Login = () => {
 
       navigate("/dashboard");
     } catch (error: any) {
+      // Detect email confirmation issues
+      if (error.message?.includes("Email not confirmed") || 
+          error.message?.includes("email_not_confirmed") ||
+          error.code === "email_not_confirmed") {
+        setShowResendPrompt(true);
+        toast({
+          title: "Email Not Confirmed",
+          description: "Please confirm your email address to log in. Check your inbox for the confirmation link.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login Failed",
+          description: error.message || "Invalid email or password",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) {
       toast({
-        title: "Login Failed",
-        description: error.message || "Invalid email or password",
+        title: "Email Required",
+        description: "Please enter your email address first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setResendingEmail(true);
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Confirmation Email Sent",
+        description: "Please check your inbox and spam folder for the confirmation link.",
+      });
+      setShowResendPrompt(false);
+    } catch (error: any) {
+      toast({
+        title: "Failed to Resend Email",
+        description: error.message || "Unable to resend confirmation email. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setResendingEmail(false);
     }
   };
 
@@ -136,6 +198,22 @@ const Login = () => {
                 {loading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
+
+            {showResendPrompt && (
+              <div className="mt-4 p-4 bg-warning/10 border border-warning/30 rounded-lg">
+                <p className="text-sm text-warning mb-2">
+                  Your email address hasn't been confirmed yet.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleResendConfirmation}
+                  disabled={resendingEmail}
+                >
+                  {resendingEmail ? "Sending..." : "Resend Confirmation Email"}
+                </Button>
+              </div>
+            )}
 
             <div className="mt-6">
               <div className="relative">
