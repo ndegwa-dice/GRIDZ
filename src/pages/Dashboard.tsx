@@ -9,6 +9,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTournaments, Tournament } from "@/hooks/useTournaments";
+import { useUserStats } from "@/hooks/useUserStats";
+import { StatsOverview } from "@/components/dashboard/StatsOverview";
+import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
+import { WinRateChart } from "@/components/dashboard/WinRateChart";
+import { PlacementDistribution } from "@/components/dashboard/PlacementDistribution";
 
 interface Profile {
   gamer_tag: string;
@@ -31,6 +36,7 @@ const Dashboard = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const { getUserTournaments } = useTournaments();
   const [userTournaments, setUserTournaments] = useState<Tournament[]>([]);
+  const { stats, loading: statsLoading } = useUserStats(user?.id);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -206,6 +212,51 @@ const Dashboard = () => {
               <p className="text-xs text-muted-foreground">Badges earned</p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Statistics Section */}
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-foreground mb-2">📊 Your Statistics</h2>
+            <p className="text-muted-foreground">Track your performance and progress</p>
+          </div>
+
+          {statsLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading statistics...</p>
+            </div>
+          ) : stats.totalTournaments === 0 ? (
+            <Card className="bg-card border-border p-12">
+              <div className="text-center text-muted-foreground">
+                <Trophy className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                <h3 className="text-xl font-semibold mb-2">No Statistics Yet</h3>
+                <p className="mb-6">Join and complete tournaments to see your stats and performance charts!</p>
+                <Button onClick={() => navigate("/tournaments")} className="bg-primary text-primary-foreground">
+                  Browse Tournaments
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <StatsOverview
+                totalTournaments={stats.totalTournaments}
+                winRate={stats.winRate}
+                averagePlacement={stats.averagePlacement}
+                totalEarnings={stats.totalEarnings}
+              />
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <PerformanceChart data={stats.performanceOverTime} />
+                <WinRateChart 
+                  winRate={stats.winRate} 
+                  totalTournaments={stats.totalTournaments} 
+                />
+              </div>
+
+              <PlacementDistribution data={stats.placementDistribution} />
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
