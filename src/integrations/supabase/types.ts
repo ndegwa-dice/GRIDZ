@@ -17,8 +17,10 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string
           id: string
+          phone: string | null
           subscription_tier: string | null
           updated_at: string
           user_id: string
@@ -27,8 +29,10 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           id?: string
+          phone?: string | null
           subscription_tier?: string | null
           updated_at?: string
           user_id: string
@@ -37,8 +41,10 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           id?: string
+          phone?: string | null
           subscription_tier?: string | null
           updated_at?: string
           user_id?: string
