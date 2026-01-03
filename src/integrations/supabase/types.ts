@@ -10,48 +10,39 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
       profiles: {
         Row: {
-          achievements: Json | null
-          created_at: string | null
-          email: string
-          gamer_tag: string
+          avatar_url: string | null
+          created_at: string
           id: string
-          phone: string | null
-          rank: string | null
-          region: string | null
-          subscription_status: boolean | null
-          updated_at: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string
+          username: string | null
           wallet_balance: number | null
         }
         Insert: {
-          achievements?: Json | null
-          created_at?: string | null
-          email: string
-          gamer_tag: string
-          id: string
-          phone?: string | null
-          rank?: string | null
-          region?: string | null
-          subscription_status?: boolean | null
-          updated_at?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
           wallet_balance?: number | null
         }
         Update: {
-          achievements?: Json | null
-          created_at?: string | null
-          email?: string
-          gamer_tag?: string
+          avatar_url?: string | null
+          created_at?: string
           id?: string
-          phone?: string | null
-          rank?: string | null
-          region?: string | null
-          subscription_status?: boolean | null
-          updated_at?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
           wallet_balance?: number | null
         }
         Relationships: []
@@ -92,50 +83,49 @@ export type Database = {
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "tournament_participants_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       tournaments: {
         Row: {
           created_at: string
-          entry_fee: number
+          current_participants: number | null
+          entry_fee: number | null
           game: string
           id: string
-          max_participants: number
+          image_url: string | null
+          max_participants: number | null
           name: string
-          prize_pool: number
+          prize_pool: number | null
           start_date: string
-          status: string
+          status: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
-          entry_fee: number
+          current_participants?: number | null
+          entry_fee?: number | null
           game: string
           id?: string
-          max_participants: number
+          image_url?: string | null
+          max_participants?: number | null
           name: string
-          prize_pool: number
+          prize_pool?: number | null
           start_date: string
-          status?: string
+          status?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
-          entry_fee?: number
+          current_participants?: number | null
+          entry_fee?: number | null
           game?: string
           id?: string
-          max_participants?: number
+          image_url?: string | null
+          max_participants?: number | null
           name?: string
-          prize_pool?: number
+          prize_pool?: number | null
           start_date?: string
-          status?: string
+          status?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -147,7 +137,7 @@ export type Database = {
     Functions: {
       join_tournament: {
         Args: { p_tournament_id: string; p_user_id: string }
-        Returns: Json
+        Returns: undefined
       }
     }
     Enums: {

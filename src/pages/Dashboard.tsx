@@ -16,14 +16,12 @@ import { WinRateChart } from "@/components/dashboard/WinRateChart";
 import { PlacementDistribution } from "@/components/dashboard/PlacementDistribution";
 
 interface Profile {
-  gamer_tag: string;
-  email: string;
-  phone: string | null;
-  region: string;
-  rank: string;
+  id: string;
+  user_id: string;
+  username: string | null;
+  avatar_url: string | null;
   wallet_balance: number;
-  achievements: any;
-  subscription_status: boolean;
+  subscription_tier: string;
   created_at: string;
   updated_at: string;
 }
@@ -70,7 +68,7 @@ const Dashboard = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'profiles',
-          filter: `id=eq.${user.id}`
+          filter: `user_id=eq.${user.id}`
         },
         (payload) => {
           console.log('Profile updated:', payload);
@@ -114,7 +112,7 @@ const Dashboard = () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user?.id)
+        .eq("user_id", user?.id)
         .single();
 
       if (error) throw error;
@@ -143,8 +141,6 @@ const Dashboard = () => {
 
   if (!user || !profile) return null;
 
-  const achievementCount = Array.isArray(profile.achievements) ? profile.achievements.length : 0;
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -153,10 +149,10 @@ const Dashboard = () => {
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-gold bg-clip-text text-transparent mb-2">
-              Welcome, {profile.gamer_tag}
+              Welcome, {profile.username || user.email?.split('@')[0] || 'Gamer'}
             </h1>
             <p className="text-muted-foreground">
-              {profile.region} • {profile.rank}
+              {profile.subscription_tier.charAt(0).toUpperCase() + profile.subscription_tier.slice(1)} Member
             </p>
           </div>
           <Button onClick={signOut} variant="outline">
@@ -178,12 +174,12 @@ const Dashboard = () => {
 
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rank</CardTitle>
+              <CardTitle className="text-sm font-medium">Tournaments Joined</CardTitle>
               <Target className="h-4 w-4 text-neon-pink" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{profile.rank}</div>
-              <p className="text-xs text-muted-foreground">{profile.region} region</p>
+              <div className="text-2xl font-bold">{userTournaments.length}</div>
+              <p className="text-xs text-muted-foreground">Active entries</p>
             </CardContent>
           </Card>
 
@@ -193,23 +189,23 @@ const Dashboard = () => {
               <Trophy className="h-4 w-4 text-neon-green" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {profile.subscription_status ? "Active" : "Inactive"}
+              <div className="text-2xl font-bold capitalize">
+                {profile.subscription_tier}
               </div>
               <p className="text-xs text-muted-foreground">
-                {profile.subscription_status ? "KES 2,800 - Paid" : "Upgrade now"}
+                {profile.subscription_tier !== 'free' ? "Active subscription" : "Upgrade now"}
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Achievements</CardTitle>
+              <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
               <Award className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{achievementCount}</div>
-              <p className="text-xs text-muted-foreground">Badges earned</p>
+              <div className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</div>
+              <p className="text-xs text-muted-foreground">From {stats.totalTournaments} tournaments</p>
             </CardContent>
           </Card>
         </div>
