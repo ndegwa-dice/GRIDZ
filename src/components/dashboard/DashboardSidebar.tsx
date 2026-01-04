@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { 
@@ -12,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Gamepad2,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,9 +41,12 @@ const navItems = [
   { to: "/dashboard/settings", icon: Settings, label: "Settings" },
 ];
 
+const adminItem = { to: "/dashboard/admin", icon: ShieldCheck, label: "Admin Panel" };
+
 export const DashboardSidebar = ({ collapsed, onToggle }: DashboardSidebarProps) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -169,6 +174,34 @@ export const DashboardSidebar = ({ collapsed, onToggle }: DashboardSidebarProps)
             </NavLink>
           );
         })}
+
+        {/* Admin Link - Only visible to admins */}
+        {isAdmin && (
+          <>
+            <Separator className="my-2 bg-border/50" />
+            <NavLink
+              to={adminItem.to}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                location.pathname === adminItem.to
+                  ? "bg-primary/10 text-primary border border-primary/20"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
+                collapsed && "justify-center px-2"
+              )}
+            >
+              <adminItem.icon className={cn(
+                "h-5 w-5 flex-shrink-0 transition-colors",
+                location.pathname === adminItem.to && "text-primary"
+              )} />
+              {!collapsed && (
+                <span className="font-medium">{adminItem.label}</span>
+              )}
+              {collapsed && (
+                <span className="sr-only">{adminItem.label}</span>
+              )}
+            </NavLink>
+          </>
+        )}
       </nav>
 
       <Separator className="bg-border/50" />

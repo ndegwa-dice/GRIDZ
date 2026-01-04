@@ -18,6 +18,7 @@ import DashboardTournaments from "./pages/dashboard/Tournaments";
 import ProfilePage from "./pages/dashboard/Profile";
 import Wallet from "./pages/dashboard/Wallet";
 import Settings from "./pages/dashboard/Settings";
+import AdminPanel from "./pages/dashboard/Admin";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="profile" element={<ProfilePage />} />
               <Route path="wallet" element={<Wallet />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="admin" element={<AdminPanel />} />
             </Route>
             
             {/* ADD CUSTOM ROUTES ABOVE */}
