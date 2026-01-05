@@ -124,6 +124,28 @@ const Auth = () => {
     }
   };
 
+  // Fallback function to ensure profile exists
+  const ensureProfileExists = async (userId: string, gamerTag: string, phone?: string) => {
+    try {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+        
+      if (!existingProfile) {
+        await supabase.from('profiles').insert({
+          user_id: userId,
+          username: gamerTag,
+          phone: phone || null,
+        });
+      }
+    } catch (err) {
+      // Profile creation is handled by trigger, this is just a fallback
+      console.warn('Profile fallback creation attempted:', err);
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -153,6 +175,12 @@ const Auth = () => {
             variant: "destructive",
           });
           setActiveTab("login");
+        } else if (error.message.includes("fetch failed") || error.message.includes("Failed to fetch")) {
+          toast({
+            title: "Connection Error",
+            description: "Unable to connect to the server. Please check your internet connection and try again.",
+            variant: "destructive",
+          });
         } else {
           throw error;
         }
@@ -160,6 +188,9 @@ const Auth = () => {
       }
 
       if (data.user) {
+        // Fallback: ensure profile exists in case trigger failed
+        await ensureProfileExists(data.user.id, validatedData.gamerTag, validatedData.phone);
+        
         toast({
           title: "Account created! 🎉",
           description: "Please check your email to confirm your account.",
@@ -173,6 +204,12 @@ const Auth = () => {
         toast({
           title: "Validation Error",
           description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else if (error.message?.includes("fetch failed") || error.message?.includes("Failed to fetch")) {
+        toast({
+          title: "Connection Error",
+          description: "Unable to connect to the server. Please check your internet connection and try again.",
           variant: "destructive",
         });
       } else {

@@ -1,0 +1,22 @@
+-- Update handle_new_user trigger with proper error handling
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public 
+AS $$
+BEGIN
+  INSERT INTO public.profiles (user_id, username, avatar_url, phone)
+  VALUES (
+    NEW.id, 
+    COALESCE(NEW.raw_user_meta_data->>'gamer_tag', NEW.raw_user_meta_data->>'username', NEW.raw_user_meta_data->>'name'),
+    NEW.raw_user_meta_data->>'avatar_url',
+    NEW.raw_user_meta_data->>'phone'
+  )
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Log but don't fail the signup
+  RAISE WARNING 'Failed to create profile for user %: %', NEW.id, SQLERRM;
+  RETURN NEW;
+END;
+$$;
