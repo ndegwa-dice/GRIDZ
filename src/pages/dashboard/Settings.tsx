@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Bell, Shield, Moon, Globe, Trash2, LogOut } from "lucide-react";
+import { Bell, Shield, Moon, Globe, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +17,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Settings = () => {
-  const { signOut } = useAuth();
   const [notifications, setNotifications] = useState({
     tournaments: true,
     results: true,
@@ -176,17 +174,6 @@ const Settings = () => {
           <CardDescription>Irreversible actions</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Sign Out</Label>
-              <p className="text-sm text-muted-foreground">Sign out of your account</p>
-            </div>
-            <Button variant="outline" onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-          
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-destructive">Delete Account</Label>

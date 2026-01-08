@@ -27,14 +27,9 @@ export const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                Sign In
-              </Button>
-            </Link>
-            <Link to="/signup">
+            <Link to="/dashboard">
               <Button variant="hero" size="sm">
-                Join GRIDZ
+                Dashboard
               </Button>
             </Link>
           </div>

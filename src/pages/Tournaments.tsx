@@ -1,44 +1,12 @@
-import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Users, Coins, Calendar } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { useTournaments } from "@/hooks/useTournaments";
-import { useState, useEffect } from "react";
 
 const Tournaments = () => {
-  const { user } = useAuth();
-  const { tournaments, loading, joinTournament, checkUserInTournament } = useTournaments();
-  const [joiningTournament, setJoiningTournament] = useState<string | null>(null);
-  const [userTournaments, setUserTournaments] = useState<Set<string>>(new Set());
-
-  // Check which tournaments the user has joined
-  useEffect(() => {
-    if (user && tournaments.length > 0) {
-      tournaments.forEach(async (tournament) => {
-        const isJoined = await checkUserInTournament(tournament.id, user.id);
-        if (isJoined) {
-          setUserTournaments(prev => new Set(prev).add(tournament.id));
-        }
-      });
-    }
-  }, [user, tournaments]);
-
-  const handleJoinTournament = async (tournamentId: string) => {
-    if (!user) return;
-    
-    setJoiningTournament(tournamentId);
-    const success = await joinTournament(tournamentId, user.id);
-    
-    if (success) {
-      setUserTournaments(prev => new Set(prev).add(tournamentId));
-    }
-    
-    setJoiningTournament(null);
-  };
+  const { tournaments, loading } = useTournaments();
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,11 +32,7 @@ const Tournaments = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tournaments.map((tournament) => {
-                const isJoined = userTournaments.has(tournament.id);
-                const isJoining = joiningTournament === tournament.id;
-                
-                return (
+              {tournaments.map((tournament) => (
                 <Card 
                   key={tournament.id}
                   className="bg-card border-border hover:border-accent transition-all duration-300 hover:shadow-glow-cyan"
@@ -122,35 +86,9 @@ const Tournaments = () => {
                         <span className="font-semibold">{tournament.start_date}</span>
                       </div>
                     </div>
-                    
-                    {isJoined ? (
-                      <Button variant="secondary" className="w-full" disabled>
-                        Already Joined ✓
-                      </Button>
-                    ) : tournament.status === "Open" ? (
-                      user ? (
-                        <Button 
-                          variant="tournament" 
-                          className="w-full"
-                          onClick={() => handleJoinTournament(tournament.id)}
-                          disabled={isJoining}
-                        >
-                          {isJoining ? "Joining..." : "Join Tournament"}
-                        </Button>
-                      ) : (
-                        <Button variant="tournament" className="w-full" asChild>
-                          <Link to="/signup">Sign Up to Join</Link>
-                        </Button>
-                      )
-                    ) : (
-                      <Button variant="secondary" className="w-full" disabled>
-                        Tournament Full
-                      </Button>
-                    )}
                   </CardContent>
                 </Card>
-              );
-            })}
+              ))}
             </div>
           )}
         </div>

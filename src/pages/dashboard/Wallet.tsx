@@ -1,46 +1,9 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, Plus, ArrowUpRight, ArrowDownLeft, Loader2, TrendingUp } from "lucide-react";
+import { Coins, Plus, ArrowUpRight, ArrowDownLeft, TrendingUp } from "lucide-react";
 
 const Wallet = () => {
-  const { user } = useAuth();
-  const [balance, setBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      loadBalance();
-    }
-  }, [user]);
-
-  const loadBalance = async () => {
-    if (!user) return;
-    
-    try {
-      const { data } = await supabase
-        .from("profiles")
-        .select("wallet_balance")
-        .eq("user_id", user.id)
-        .single();
-
-      if (data) setBalance(data.wallet_balance || 0);
-    } catch (error) {
-      console.error("Error loading balance:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const balance = 0;
 
   return (
     <div className="space-y-6">
