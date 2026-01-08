@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Trophy, Crown, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
+import MatchDetailsModal from "./MatchDetailsModal";
 
 interface Match {
   id: string;
@@ -51,12 +53,23 @@ const bracketData: BracketRound[] = [
   },
 ];
 
-const MatchCard = ({ match, isFinal }: { match: Match; isFinal?: boolean }) => {
+const MatchCard = ({ 
+  match, 
+  isFinal, 
+  onClick 
+}: { 
+  match: Match; 
+  isFinal?: boolean;
+  onClick: () => void;
+}) => {
   return (
     <div
+      onClick={onClick}
       className={cn(
-        "relative bg-card/80 backdrop-blur-sm border rounded-lg p-3 min-w-[200px]",
-        isFinal ? "border-primary shadow-glow-gold" : "border-border hover:border-accent transition-colors"
+        "relative bg-card/80 backdrop-blur-sm border rounded-lg p-3 min-w-[200px] cursor-pointer transition-all duration-300",
+        isFinal 
+          ? "border-primary shadow-glow-gold hover:shadow-[0_0_30px_hsl(45_100%_50%/0.5)]" 
+          : "border-border hover:border-accent hover:shadow-glow-cyan"
       )}
     >
       {isFinal && (
@@ -68,7 +81,7 @@ const MatchCard = ({ match, isFinal }: { match: Match; isFinal?: boolean }) => {
       {/* Player 1 */}
       <div
         className={cn(
-          "flex items-center justify-between py-1.5 px-2 rounded",
+          "flex items-center justify-between py-1.5 px-2 rounded transition-colors",
           match.player1.winner ? "bg-neon-green/20 text-neon-green" : "text-muted-foreground"
         )}
       >
@@ -86,7 +99,7 @@ const MatchCard = ({ match, isFinal }: { match: Match; isFinal?: boolean }) => {
       {/* Player 2 */}
       <div
         className={cn(
-          "flex items-center justify-between py-1.5 px-2 rounded",
+          "flex items-center justify-between py-1.5 px-2 rounded transition-colors",
           match.player2.winner ? "bg-neon-green/20 text-neon-green" : "text-muted-foreground"
         )}
       >
@@ -99,66 +112,98 @@ const MatchCard = ({ match, isFinal }: { match: Match; isFinal?: boolean }) => {
       {match.penalties && (
         <p className="text-xs text-center text-muted-foreground mt-1">{match.penalties}</p>
       )}
+
+      {/* Click hint */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-background/60 rounded-lg">
+        <span className="text-xs text-foreground font-medium">View Details</span>
+      </div>
     </div>
   );
 };
 
 const TournamentBracket = () => {
+  const [selectedMatch, setSelectedMatch] = useState<{
+    match: Match;
+    round: string;
+  } | null>(null);
+
   const champion = bracketData[3].matches[0].player1.winner
     ? bracketData[3].matches[0].player1.name
     : bracketData[3].matches[0].player2.name;
 
   return (
-    <div className="glass-card p-6 rounded-xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Trophy className="w-6 h-6 text-primary" />
-        <h2 className="text-2xl font-bold bg-gradient-gold bg-clip-text text-transparent">
-          Tournament Bracket
-        </h2>
-      </div>
-
-      {/* Champion Banner */}
-      <div className="mb-8 p-4 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-lg border border-primary/30 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Crown className="w-8 h-8 text-primary" />
+    <>
+      <div className="glass-card p-6 rounded-xl">
+        <div className="flex items-center gap-3 mb-6">
+          <Trophy className="w-6 h-6 text-primary" />
+          <h2 className="text-2xl font-bold bg-gradient-gold bg-clip-text text-transparent">
+            Tournament Bracket
+          </h2>
         </div>
-        <p className="text-sm text-muted-foreground mb-1">Champion</p>
-        <p className="text-2xl font-bold text-primary neon-text">{champion}</p>
-      </div>
 
-      {/* Bracket Grid */}
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-8 min-w-max">
-          {bracketData.map((round, roundIndex) => (
-            <div key={round.name} className="flex flex-col">
-              <h3 className="text-sm font-semibold text-neon-cyan mb-4 text-center">
-                {round.name}
-              </h3>
-              <div
-                className="flex flex-col gap-4 justify-around"
-                style={{ minHeight: roundIndex === 0 ? "auto" : undefined }}
-              >
-                {round.matches.map((match) => (
-                  <MatchCard key={match.id} match={match} isFinal={round.name === "Final"} />
-                ))}
+        {/* Champion Banner */}
+        <div className="mb-8 p-4 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-lg border border-primary/30 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Crown className="w-8 h-8 text-primary" />
+          </div>
+          <p className="text-sm text-muted-foreground mb-1">Champion</p>
+          <p className="text-2xl font-bold text-primary neon-text">{champion}</p>
+        </div>
+
+        {/* Bracket Grid */}
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-8 min-w-max">
+            {bracketData.map((round, roundIndex) => (
+              <div key={round.name} className="flex flex-col">
+                <h3 className="text-sm font-semibold text-neon-cyan mb-4 text-center">
+                  {round.name}
+                </h3>
+                <div
+                  className="flex flex-col gap-4 justify-around"
+                  style={{ minHeight: roundIndex === 0 ? "auto" : undefined }}
+                >
+                  {round.matches.map((match) => (
+                    <MatchCard 
+                      key={match.id} 
+                      match={match} 
+                      isFinal={round.name === "Final"}
+                      onClick={() => setSelectedMatch({ match, round: round.name })}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-6 mt-6 pt-4 border-t border-border/50 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-neon-green/50" />
+            <span className="text-muted-foreground">Winner</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-muted" />
+            <span className="text-muted-foreground">Eliminated</span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground">
+            Click any match for details
+          </div>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-6 mt-6 pt-4 border-t border-border/50 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-neon-green/50" />
-          <span className="text-muted-foreground">Winner</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-muted" />
-          <span className="text-muted-foreground">Eliminated</span>
-        </div>
-      </div>
-    </div>
+      {/* Match Details Modal */}
+      {selectedMatch && (
+        <MatchDetailsModal
+          open={!!selectedMatch}
+          onOpenChange={(open) => !open && setSelectedMatch(null)}
+          matchId={selectedMatch.match.id}
+          player1={selectedMatch.match.player1}
+          player2={selectedMatch.match.player2}
+          round={selectedMatch.round}
+        />
+      )}
+    </>
   );
 };
 
