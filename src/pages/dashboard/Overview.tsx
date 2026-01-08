@@ -1,74 +1,17 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { useTournaments, Tournament } from "@/hooks/useTournaments";
-import { useUserStats } from "@/hooks/useUserStats";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Coins, Target, Award, TrendingUp, Calendar, ChevronRight, Sparkles, Zap, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string | null;
-  avatar_url: string | null;
-  wallet_balance: number;
-  subscription_tier: string;
-}
-
 const Overview = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { getUserTournaments } = useTournaments();
-  const [userTournaments, setUserTournaments] = useState<Tournament[]>([]);
-  const { stats } = useUserStats(user?.id);
-
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
-
-  const loadData = async () => {
-    if (!user) return;
-
-    try {
-      const [profileData, tournaments] = await Promise.all([
-        supabase.from("profiles").select("*").eq("user_id", user.id).single(),
-        getUserTournaments(user.id)
-      ]);
-
-      if (profileData.data) setProfile(profileData.data as Profile);
-      setUserTournaments(tournaments as Tournament[]);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-10 w-64 bg-secondary/30 rounded-xl animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-36 bg-secondary/30 rounded-2xl animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   const statCards = [
     {
       label: "GZ Tokens",
-      value: profile?.wallet_balance || 0,
+      value: 0,
       icon: Coins,
       color: "neon-cyan",
       gradient: "from-neon-cyan/20 to-neon-cyan/5",
@@ -78,24 +21,24 @@ const Overview = () => {
     },
     {
       label: "Active Tournaments",
-      value: userTournaments.length,
+      value: 0,
       icon: Target,
       color: "neon-pink",
       gradient: "from-neon-pink/20 to-neon-pink/5",
       shadow: "shadow-glow-pink",
-      progress: userTournaments.length * 10,
+      progress: 0,
     },
     {
       label: "Win Rate",
-      value: `${stats.winRate.toFixed(1)}%`,
+      value: "0%",
       icon: Award,
       color: "neon-green",
       gradient: "from-neon-green/20 to-neon-green/5",
-      subtitle: `From ${stats.totalTournaments} tournaments`,
+      subtitle: "From 0 tournaments",
     },
     {
       label: "Membership",
-      value: profile?.subscription_tier || 'Free',
+      value: "Free",
       icon: Crown,
       color: "primary",
       gradient: "from-primary/20 to-primary/5",
@@ -114,7 +57,7 @@ const Overview = () => {
             <span className="text-sm text-muted-foreground font-medium">Welcome back</span>
           </div>
           <h1 className="text-4xl font-bold text-foreground">
-            <span className="bg-gradient-gold bg-clip-text text-transparent">{profile?.username || 'Gamer'}</span>
+            <span className="bg-gradient-gold bg-clip-text text-transparent">Gamer</span>
             <span className="ml-2">👋</span>
           </h1>
           <p className="text-muted-foreground mt-2">Here's what's happening with your gaming journey</p>
@@ -214,52 +157,20 @@ const Overview = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            {userTournaments.length > 0 ? (
-              <div className="space-y-3">
-                {userTournaments.slice(0, 3).map((tournament, index) => (
-                  <div 
-                    key={tournament.id}
-                    className="p-4 rounded-xl bg-secondary/20 border border-border/50 hover:border-primary/30 hover:bg-secondary/30 transition-all duration-300 cursor-pointer group"
-                    style={{ animationDelay: `${(index + 6) * 100}ms` }}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-semibold group-hover:text-primary transition-colors">{tournament.name}</h4>
-                        <p className="text-sm text-muted-foreground">{tournament.game}</p>
-                      </div>
-                      <span className="text-xs px-3 py-1 rounded-full bg-neon-green/20 text-neon-green border border-neon-green/30 capitalize font-medium">
-                        {tournament.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
-                      <span className="flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded-lg">
-                        <Trophy className="h-3 w-3 text-primary" />
-                        <span className="text-primary font-medium">{tournament.prize_pool} GZC</span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(tournament.start_date).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+            <div className="text-center py-12">
+              <div className="relative inline-block mb-4">
+                <Trophy className="h-16 w-16 text-muted-foreground/20" />
+                <Sparkles className="h-6 w-6 absolute -top-2 -right-2 text-primary/40 animate-pulse" />
               </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="relative inline-block mb-4">
-                  <Trophy className="h-16 w-16 text-muted-foreground/20" />
-                  <Sparkles className="h-6 w-6 absolute -top-2 -right-2 text-primary/40 animate-pulse" />
-                </div>
-                <p className="text-muted-foreground mb-4">No active tournaments yet</p>
-                <Button 
-                  onClick={() => navigate("/tournaments")} 
-                  variant="outline"
-                  className="rounded-xl border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
-                >
-                  Browse Tournaments
-                </Button>
-              </div>
-            )}
+              <p className="text-muted-foreground mb-4">No active tournaments yet</p>
+              <Button 
+                onClick={() => navigate("/tournaments")} 
+                variant="outline"
+                className="rounded-xl border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
+              >
+                Browse Tournaments
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

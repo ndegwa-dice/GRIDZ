@@ -1,37 +1,10 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Outlet } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useState } from "react";
+import { Outlet } from "react-router-dom";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardHeader } from "./DashboardHeader";
-import { Loader2, Gamepad2 } from "lucide-react";
 
 export const DashboardLayout = () => {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
-    }
-  }, [user, loading, navigate]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center gaming-mesh">
-        <div className="text-center animate-fade-in">
-          <div className="relative">
-            <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full animate-pulse-ring" />
-            <Gamepad2 className="h-16 w-16 text-primary mx-auto mb-4 animate-float relative z-10" />
-          </div>
-          <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium">Loading your arena...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-background flex w-full overflow-hidden">
