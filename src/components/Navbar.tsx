@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
-import { Gamepad2 } from "lucide-react";
+import { Gamepad2, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Navbar = () => {
+  const { user, signOut } = useAuth();
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <div className="container mx-auto px-4">
@@ -15,23 +18,26 @@ export const Navbar = () => {
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">
-              Home
-            </Link>
-            <Link to="/tournaments" className="text-sm font-medium hover:text-primary transition-colors">
-              Tournaments
-            </Link>
-            <Link to="/about" className="text-sm font-medium hover:text-primary transition-colors">
-              About
-            </Link>
+            <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">Home</Link>
+            <Link to="/tournaments" className="text-sm font-medium hover:text-primary transition-colors">Tournaments</Link>
+            <Link to="/about" className="text-sm font-medium hover:text-primary transition-colors">About</Link>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link to="/dashboard">
-              <Button variant="hero" size="sm">
-                Dashboard
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/dashboard">
+                  <Button variant="hero" size="sm">Dashboard</Button>
+                </Link>
+                <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground hover:text-foreground">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth">
+                <Button variant="hero" size="sm">Sign In</Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
