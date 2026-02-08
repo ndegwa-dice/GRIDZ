@@ -12,8 +12,10 @@ import {
   Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardSidebarProps {
   collapsed: boolean;
@@ -31,6 +33,10 @@ const navItems = [
 
 export const DashboardSidebar = ({ collapsed, onToggle }: DashboardSidebarProps) => {
   const location = useLocation();
+  const { profile } = useProfile();
+  const { user } = useAuth();
+  const displayName = profile?.username || user?.email?.split("@")[0] || "Gamer";
+  const initials = displayName.charAt(0).toUpperCase();
 
   return (
     <aside 
@@ -98,18 +104,19 @@ export const DashboardSidebar = ({ collapsed, onToggle }: DashboardSidebarProps)
         )}>
           <div className="relative">
             <Avatar className="h-10 w-10 border-2 border-primary/30 ring-2 ring-primary/10 ring-offset-2 ring-offset-background transition-all group-hover:ring-primary/30">
+              <AvatarImage src={profile?.avatar_url || undefined} alt="Avatar" />
               <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-bold">
-                G
+                {initials}
               </AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-neon-green rounded-full border-2 border-background" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate text-foreground">Demo User</p>
+              <p className="font-semibold truncate text-foreground">{displayName}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-xs px-2 py-0.5 rounded-full capitalize font-medium bg-muted/30 text-muted-foreground border border-border">
-                  Free
+                  {profile?.subscription_tier || "Free"}
                 </span>
               </div>
             </div>
