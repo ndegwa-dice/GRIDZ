@@ -20,6 +20,14 @@ import ProfilePage from "./pages/dashboard/Profile";
 import Wallet from "./pages/dashboard/Wallet";
 import Settings from "./pages/dashboard/Settings";
 
+// Admin imports
+import { AdminRoute } from "./components/AdminRoute";
+import { AdminLayout } from "./components/admin/AdminLayout";
+import AdminOverview from "./pages/admin/Overview";
+import AdminTournaments from "./pages/admin/Tournaments";
+import AdminUsers from "./pages/admin/Users";
+import AdminRoles from "./pages/admin/Roles";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -43,6 +51,14 @@ const App = () => (
               <Route path="profile" element={<ProfilePage />} />
               <Route path="wallet" element={<Wallet />} />
               <Route path="settings" element={<Settings />} />
+            </Route>
+            
+            {/* Admin routes */}
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<AdminOverview />} />
+              <Route path="tournaments" element={<AdminTournaments />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="roles" element={<AdminRoles />} />
             </Route>
             
             {/* ADD CUSTOM ROUTES ABOVE */}

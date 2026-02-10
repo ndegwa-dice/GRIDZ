@@ -9,13 +9,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Gamepad2,
-  Sparkles
+  Sparkles,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 interface DashboardSidebarProps {
   collapsed: boolean;
@@ -35,6 +37,7 @@ export const DashboardSidebar = ({ collapsed, onToggle }: DashboardSidebarProps)
   const location = useLocation();
   const { profile } = useProfile();
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const displayName = profile?.username || user?.email?.split("@")[0] || "Gamer";
   const initials = displayName.charAt(0).toUpperCase();
 
@@ -174,6 +177,22 @@ export const DashboardSidebar = ({ collapsed, onToggle }: DashboardSidebarProps)
           );
         })}
       </nav>
+
+      {/* Admin link */}
+      {isAdmin && (
+        <div className="px-2 pb-4">
+          <NavLink
+            to="/admin"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-destructive hover:bg-destructive/10",
+              collapsed && "justify-center px-2"
+            )}
+          >
+            <Shield className="h-5 w-5 flex-shrink-0" />
+            {!collapsed && <span className="font-medium">Admin Panel</span>}
+          </NavLink>
+        </div>
+      )}
       
       {/* Decorative bottom gradient line */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
