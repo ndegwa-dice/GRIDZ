@@ -1,97 +1,54 @@
 
 
-## Rebuild the Dashboard Tournaments Tab
-
-### Vision
-Transform the dashboard `/dashboard/tournaments` tab from a bare empty-state page into a rich, immersive tournament hub that gives gamers everything they need at a glance — live tournament feeds, real-time stats, bracket views, leaderboards, and upcoming events — all wrapped in the GRIDZ gaming gradient theme.
+## Add Live Activity Feed to Admin Overview
 
 ### What Changes
 
-**File: `src/pages/dashboard/Tournaments.tsx`** — Complete redesign with these sections:
+**File: `src/pages/admin/Overview.tsx`** -- Add a real-time activity feed section below the existing stats and recent tournaments.
 
-**1. Header with Live Pulse Indicator**
-- Title "My Tournaments" with gradient gold text
-- Live indicator dot (pulsing green) showing real-time connection status
-- "Find More" button linking to `/tournaments`
+### Implementation Details
 
-**2. Tournament Stats Bar (4 mini stat cards)**
-- Tournaments Joined: 3 (demo)
-- Win Rate: 67% (demo)
-- Total Earnings: 4,500 GZC (demo)
-- Current Rank: #12 (demo)
-- Each card uses the `stat-card` hover effect with neon color accents
+**1. Supabase Realtime Subscriptions**
+- Subscribe to `tournament_participants` table for INSERT events (player joins) and UPDATE events (placement/points changes, indicating completions and prize awards)
+- Subscribe to `tournaments` table for UPDATE events (status changes like going live)
+- Each event gets mapped into a feed item with a type, message, timestamp, and icon
 
-**3. Tabbed Content Area (4 tabs instead of 2)**
-- **Live Now** — Active tournaments with real-time score tickers, featuring the EA FC 26 Nairobi Championship with an inline mini-bracket preview and clickable match cards
-- **Upcoming** — Tournaments opening soon with countdown timers, entry fees, and "Register" buttons
-- **My History** — Completed tournaments with placement, earnings, and performance summaries
-- **Leaderboard** — Top 10 players ranked by earnings/wins with avatar, gamer tag, win rate, and earnings
+**2. Activity Feed State**
+- New state: `activityFeed` array holding up to 50 recent events
+- Each feed item has: `id`, `type` (join / completion / prize / status_change), `message`, `timestamp`, `icon`, `color`
+- New events prepend to the top with an animated entry effect
+- On mount, load the 10 most recent `tournament_participants` entries (sorted by `joined_at` desc) as seed data, joining with tournament names
 
-**4. Featured Tournament Card (Live)**
-- The EA FC 26 Nairobi Championship displayed prominently
-- Shows current round (e.g., "Semi Finals"), live match score, time elapsed
-- Quick stats row: prize pool, players remaining, your placement
-- "View Bracket" button that expands the `TournamentBracket` component inline
-- Glass-card styling with gold border glow
+**3. Feed Item Rendering**
+- A new "Live Activity" card with a pulsing green dot in the header
+- ScrollArea (max height ~400px) containing feed items
+- Each item shows: colored icon, descriptive message (e.g., "KenyanKing254 joined Nairobi Championship"), and relative timestamp (e.g., "2 min ago")
+- Different colors per type: green for joins, gold for prizes, cyan for completions, purple for status changes
+- Staggered `animate-slide-up` entry on new items
 
-**5. Upcoming Tournaments Grid**
-- 3 demo upcoming tournaments (e.g., "GRIDZ FIFA Pro League", "Mombasa Showdown", "Rift Valley Cup")
-- Each card shows: game, date, entry fee, prize pool, spots remaining
-- Animated countdown timer for the nearest tournament
-- Progress bar showing registration fill rate
+**4. Real-time Event Processing**
+- On `tournament_participants` INSERT: fetch the participant's username from profiles and tournament name, display "USERNAME joined TOURNAMENT"
+- On `tournament_participants` UPDATE where `placement` is set: display "USERNAME placed #N in TOURNAMENT"
+- On `tournament_participants` UPDATE where `points_earned` > 0: display "USERNAME earned X GZC in TOURNAMENT"
+- On `tournaments` UPDATE where status changes to "live": display "TOURNAMENT is now LIVE!"
 
-**6. Match History Table**
-- Recent 5 matches with: opponent, score, result (W/L badge), earnings, date
-- Color-coded rows (green tint for wins, subtle red for losses)
-- Animated row entry with stagger
+**5. Stats Auto-Refresh**
+- The existing stats (total users, participations, etc.) will also refresh when realtime events arrive, keeping the overview numbers current
 
-**7. Mini Leaderboard**
-- Top 10 gamers with rank, avatar placeholder, gamer tag, wins, earnings
-- Current user highlighted with gold border
-- Trophy icon for top 3
+**6. Cleanup**
+- Unsubscribe from all Supabase channels on component unmount
 
-### Demo Data
-All data is hardcoded demo data (no auth required), matching the Kenyan gaming theme:
-- Gamer tags: KenyanKing254, ElDoretEagle, LakeVictoriaLegend, etc.
-- Tournaments: EA FC 26 themed, Nairobi/Mombasa/Eldoret locations
-- GZC token amounts for prizes and earnings
+### Technical Notes
 
-### New Components Created
-
-**File: `src/components/dashboard/TournamentLeaderboard.tsx`** (NEW)
-- Reusable leaderboard component with rank, player name, wins, earnings
-- Top 3 get gold/silver/bronze crown icons
-- Animated row entry
-
-**File: `src/components/dashboard/LiveMatchTicker.tsx`** (NEW)
-- Shows a live match with pulsing "LIVE" badge
-- Two player names with animated score
-- Time elapsed counter
-- Click to expand to full bracket view
-
-**File: `src/components/dashboard/CountdownTimer.tsx`** (NEW)
-- Countdown display showing days, hours, minutes, seconds
-- Uses `useEffect` with `setInterval` for real-time countdown
-- Neon-styled digit boxes
-
-### Technical Details
-
-- Reuses existing `TournamentBracket` and `MatchDetailsModal` components
-- All demo data is defined as constants within the file (no database queries needed for demo)
-- Uses existing CSS classes: `glass-card`, `stat-card`, `gaming-mesh`, `neon-text`, `hover-glow`
-- Staggered `animate-slide-up` animations on all cards
-- Tabs component from `@/components/ui/tabs`
-- Badge, Progress, Card components from existing UI library
-- Recharts `AreaChart` for a small performance sparkline in the stats section
-- `date-fns` for countdown formatting (already installed)
-- All colors use the existing neon accent variables (cyan, pink, green, gold)
+- Uses existing `ScrollArea` component for the feed container
+- Uses `date-fns` `formatDistanceToNow` for relative timestamps
+- Realtime subscriptions use `supabase.channel()` API already used in admin tournaments page
+- No new database tables or migrations needed -- reads existing data
+- Icons from lucide-react: `UserPlus` (join), `Medal` (placement), `Coins` (prize), `Radio` (live status)
 
 ### Files Summary
 
 | File | Action |
 |------|--------|
-| `src/pages/dashboard/Tournaments.tsx` | Rewrite |
-| `src/components/dashboard/TournamentLeaderboard.tsx` | Create |
-| `src/components/dashboard/LiveMatchTicker.tsx` | Create |
-| `src/components/dashboard/CountdownTimer.tsx` | Create |
+| `src/pages/admin/Overview.tsx` | Edit -- add realtime subscriptions, activity feed section, and auto-refreshing stats |
 
