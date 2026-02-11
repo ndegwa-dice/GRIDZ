@@ -1,9 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Coins, Plus, ArrowUpRight, ArrowDownLeft, TrendingUp } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
 
 const Wallet = () => {
-  const balance = 0;
+  const { profile, loading } = useProfile();
+  const balance = profile?.wallet_balance || 0;
 
   return (
     <div className="space-y-6">
@@ -21,7 +23,11 @@ const Wallet = () => {
               <p className="text-muted-foreground mb-2">Available Balance</p>
               <div className="flex items-baseline gap-2">
                 <Coins className="h-8 w-8 text-neon-cyan" />
-                <span className="text-5xl font-bold text-neon-cyan">{balance}</span>
+                {loading ? (
+                  <div className="animate-pulse h-12 w-24 bg-secondary rounded" />
+                ) : (
+                  <span className="text-5xl font-bold text-neon-cyan">{balance.toLocaleString()}</span>
+                )}
                 <span className="text-xl text-muted-foreground">GZC</span>
               </div>
               <div className="flex items-center gap-2 mt-3 text-sm">
@@ -32,12 +38,10 @@ const Wallet = () => {
             
             <div className="flex gap-3">
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Tokens
+                <Plus className="h-4 w-4 mr-2" /> Add Tokens
               </Button>
               <Button variant="outline" className="border-border">
-                <ArrowUpRight className="h-4 w-4 mr-2" />
-                Withdraw
+                <ArrowUpRight className="h-4 w-4 mr-2" /> Withdraw
               </Button>
             </div>
           </div>
@@ -55,7 +59,6 @@ const Wallet = () => {
             <p className="text-sm text-muted-foreground">Purchase GZ Tokens with M-Pesa</p>
           </CardContent>
         </Card>
-
         <Card className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer group">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-neon-green/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-neon-green/20 transition-colors">
@@ -65,7 +68,6 @@ const Wallet = () => {
             <p className="text-sm text-muted-foreground">Get tokens from other players</p>
           </CardContent>
         </Card>
-
         <Card className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer group">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-neon-pink/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-neon-pink/20 transition-colors">
@@ -87,9 +89,7 @@ const Wallet = () => {
           <div className="py-12 text-center">
             <Coins className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
             <p className="text-muted-foreground">No transactions yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Your transaction history will appear here
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Your transaction history will appear here</p>
           </div>
         </CardContent>
       </Card>

@@ -14,6 +14,100 @@ export type Database = {
   }
   public: {
     Tables: {
+      match_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          match_id: string
+          minute: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          match_id: string
+          minute?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          match_id?: string
+          minute?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          match_order: number
+          player1_id: string | null
+          player1_score: number
+          player2_id: string | null
+          player2_score: number
+          round: number
+          started_at: string | null
+          status: string
+          tournament_id: string
+          winner_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          match_order: number
+          player1_id?: string | null
+          player1_score?: number
+          player2_id?: string | null
+          player2_score?: number
+          round: number
+          started_at?: string | null
+          status?: string
+          tournament_id: string
+          winner_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          match_order?: number
+          player1_id?: string | null
+          player1_score?: number
+          player2_id?: string | null
+          player2_score?: number
+          round?: number
+          started_at?: string | null
+          status?: string
+          tournament_id?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -162,6 +256,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advance_bye_winners: {
+        Args: { p_tournament_id: string }
+        Returns: undefined
+      }
+      complete_match: {
+        Args: {
+          p_match_id: string
+          p_player1_score: number
+          p_player2_score: number
+          p_winner_id: string
+        }
+        Returns: undefined
+      }
+      generate_bracket: {
+        Args: { p_tournament_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
