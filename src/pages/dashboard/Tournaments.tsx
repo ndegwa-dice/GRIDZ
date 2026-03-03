@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trophy, Users, Target, Coins, TrendingUp, ChevronDown, ChevronUp, Gamepad2, Calendar, Zap } from "lucide-react";
+import { Trophy, Users, Target, Coins, TrendingUp, Gamepad2, Calendar, Zap, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTournaments } from "@/hooks/useTournaments";
@@ -32,7 +32,7 @@ const DashboardTournaments = () => {
   const { user } = useAuth();
   const { tournaments, loading, joinTournament, checkUserInTournament } = useTournaments();
   const { toast } = useToast();
-  const [bracketOpen, setBracketOpen] = useState(false);
+  const [selectedLiveTournamentId, setSelectedLiveTournamentId] = useState<string | null>(null);
   const [liveTournamentId, setLiveTournamentId] = useState<string | null>(null);
   const [liveMatches, setLiveMatches] = useState<MatchWithNames[]>([]);
   const [joinedMap, setJoinedMap] = useState<Record<string, boolean>>({});
@@ -62,7 +62,8 @@ const DashboardTournaments = () => {
   }, [user, liveTournamentId]);
 
   useEffect(() => {
-    if (liveTournaments.length > 0 && !liveTournamentId) {
+    if (liveTournaments.length > 0 && !selectedLiveTournamentId) {
+      setSelectedLiveTournamentId(liveTournaments[0].id);
       setLiveTournamentId(liveTournaments[0].id);
       loadLiveMatches(liveTournaments[0].id);
     }
@@ -205,7 +206,7 @@ const DashboardTournaments = () => {
     { icon: TrendingUp, label: "Rank", value: stats.rank, color: "text-accent", bg: "bg-accent/10" },
   ];
 
-  const activeLiveTournament = liveTournaments.find(t => t.id === liveTournamentId) || liveTournaments[0];
+  const activeLiveTournament = liveTournaments.find(t => t.id === selectedLiveTournamentId) || liveTournaments[0];
 
   return (
     <div className="space-y-6">
@@ -253,15 +254,36 @@ const DashboardTournaments = () => {
         {/* Live */}
         <TabsContent value="live" className="mt-6 space-y-4">
           {activeLiveTournament ? (
-            <Card className="glass-card border-primary/30 overflow-hidden">
+          <Card className="glass-card border-primary/30 overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <Badge className="bg-destructive/90 text-destructive-foreground border-0 mb-2 text-[10px] animate-pulse">LIVE NOW</Badge>
                     <CardTitle className="text-xl bg-gradient-gold bg-clip-text text-transparent">{activeLiveTournament.name}</CardTitle>
                   </div>
-                  <Badge variant="outline" className="text-accent border-accent/50">{activeLiveTournament.game}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-accent border-accent/50">{activeLiveTournament.game}</Badge>
+                    <Button variant="outline" size="sm" className="border-accent/30 text-accent" onClick={() => navigate(`/tournaments/${activeLiveTournament.id}`)}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> View
+                    </Button>
+                  </div>
                 </div>
+                {/* Tournament selector if multiple live */}
+                {liveTournaments.length > 1 && (
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {liveTournaments.map(t => (
+                      <Button
+                        key={t.id}
+                        variant={selectedLiveTournamentId === t.id ? "default" : "outline"}
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => { setSelectedLiveTournamentId(t.id); setLiveTournamentId(t.id); loadLiveMatches(t.id); }}
+                      >
+                        {t.name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-3 text-center">
@@ -290,14 +312,10 @@ const DashboardTournaments = () => {
                   <div className="text-center py-4 text-muted-foreground text-sm">No live matches right now</div>
                 )}
 
-                <Button variant="outline" size="sm" className="w-full border-accent/30 text-accent hover:bg-accent/10" onClick={() => setBracketOpen(!bracketOpen)}>
-                  {bracketOpen ? <><ChevronUp className="h-4 w-4 mr-1" /> Hide Bracket</> : <><ChevronDown className="h-4 w-4 mr-1" /> View Full Bracket</>}
-                </Button>
-                {bracketOpen && (
-                  <div className="animate-scale-in">
-                    <TournamentBracket tournamentId={activeLiveTournament.id} />
-                  </div>
-                )}
+                {/* Bracket always visible */}
+                <div className="animate-scale-in">
+                  <TournamentBracket tournamentId={activeLiveTournament.id} />
+                </div>
               </CardContent>
             </Card>
           ) : (
@@ -343,13 +361,18 @@ const DashboardTournaments = () => {
                       </div>
                       <Progress value={((t.participants || 0) / (t.max_participants || 1)) * 100} className="h-1.5" />
                     </div>
-                    <Button
-                      variant="neon" size="sm" className="w-full"
-                      disabled={joiningId === t.id || joinedMap[t.id]}
-                      onClick={() => handleJoin(t.id)}
-                    >
-                      {joinedMap[t.id] ? "Already Joined ✓" : joiningId === t.id ? "Joining..." : "Register Now"}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="neon" size="sm" className="flex-1"
+                        disabled={joiningId === t.id || joinedMap[t.id]}
+                        onClick={() => handleJoin(t.id)}
+                      >
+                        {joinedMap[t.id] ? "Joined ✓" : joiningId === t.id ? "Joining..." : "Register"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="border-accent/30 text-accent" onClick={() => navigate(`/tournaments/${t.id}`)}>
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}

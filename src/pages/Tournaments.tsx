@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Users, Coins, Calendar, Gamepad2, Radio } from "lucide-react";
+import { Trophy, Users, Coins, Calendar, Gamepad2, Radio, ExternalLink } from "lucide-react";
 import { useTournaments } from "@/hooks/useTournaments";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +13,7 @@ import TournamentBracket from "@/components/TournamentBracket";
 
 const Tournaments = () => {
   const { tournaments, loading, joinTournament, checkUserInTournament } = useTournaments();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [joiningId, setJoiningId] = useState<string | null>(null);
@@ -93,6 +95,9 @@ const Tournaments = () => {
                         {joinedMap[featuredTournament.id] ? "Already Joined" : joiningId === featuredTournament.id ? "Joining..." : "Join Tournament"}
                       </Button>
                     )}
+                    <Button variant="outline" className="border-accent/30 text-accent" onClick={() => navigate(`/tournaments/${featuredTournament.id}`)}>
+                      <ExternalLink className="h-4 w-4 mr-1" /> View Full Tournament
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -191,17 +196,12 @@ const Tournaments = () => {
                       {(tournament.status === "live" || tournament.status === "completed") && (
                         <Button
                           variant="outline" size="sm" className="w-full border-accent/30 text-accent"
-                          onClick={() => setBracketTournamentId(bracketTournamentId === tournament.id ? null : tournament.id)}
+                          onClick={() => navigate(`/tournaments/${tournament.id}`)}
                         >
-                          {bracketTournamentId === tournament.id ? "Hide Bracket" : "View Bracket"}
+                          <ExternalLink className="h-4 w-4 mr-1" /> View Tournament
                         </Button>
                       )}
 
-                      {bracketTournamentId === tournament.id && (
-                        <div className="mt-4 animate-scale-in">
-                          <TournamentBracket tournamentId={tournament.id} />
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}
