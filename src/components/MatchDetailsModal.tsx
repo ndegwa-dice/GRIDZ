@@ -1,34 +1,10 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Trophy, Target, Gamepad2, TrendingUp, Clock, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface PlayerStats {
-  name: string;
-  score: number;
-  winner?: boolean;
-  stats: {
-    possession: number;
-    shots: number;
-    shotsOnTarget: number;
-    passes: number;
-    passAccuracy: number;
-    tackles: number;
-    fouls: number;
-    corners: number;
-    yellowCards: number;
-    redCards: number;
-  };
-  history: {
-    opponent: string;
-    result: string;
-    score: string;
-  }[];
-  ranking: number;
-  winRate: number;
-  gamesPlayed: number;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface MatchDetailsModalProps {
   open: boolean;
@@ -39,168 +15,155 @@ interface MatchDetailsModalProps {
   round: string;
 }
 
-// Generate mock player stats
-const generatePlayerStats = (name: string, score: number, winner?: boolean): PlayerStats => {
-  const baseStats = {
-    possession: Math.floor(Math.random() * 30) + 35,
-    shots: Math.floor(Math.random() * 10) + 5,
-    shotsOnTarget: Math.floor(Math.random() * 6) + 2,
-    passes: Math.floor(Math.random() * 200) + 300,
-    passAccuracy: Math.floor(Math.random() * 20) + 70,
-    tackles: Math.floor(Math.random() * 15) + 5,
-    fouls: Math.floor(Math.random() * 8),
-    corners: Math.floor(Math.random() * 6),
-    yellowCards: Math.floor(Math.random() * 3),
-    redCards: Math.random() > 0.9 ? 1 : 0,
-  };
+interface MatchEvent {
+  id: string;
+  event_type: string;
+  minute: number;
+  description: string | null;
+  user_id: string | null;
+  created_at: string;
+}
 
-  const opponents = ["MombasaMaster", "KisumuKiller", "ElDoretEagle", "NakuruNemesis", "ThikaThunder"];
-  const history = Array.from({ length: 3 }, () => {
-    const won = Math.random() > 0.4;
-    const homeScore = Math.floor(Math.random() * 4) + (won ? 1 : 0);
-    const awayScore = Math.floor(Math.random() * 3) + (won ? 0 : 1);
-    return {
-      opponent: opponents[Math.floor(Math.random() * opponents.length)],
-      result: won ? "W" : "L",
-      score: `${homeScore}-${awayScore}`,
-    };
-  });
+interface PlayerProfile {
+  gamesPlayed: number;
+  wins: number;
+  winRate: number;
+}
 
-  return {
-    name,
-    score,
-    winner,
-    stats: baseStats,
-    history,
-    ranking: Math.floor(Math.random() * 50) + 1,
-    winRate: Math.floor(Math.random() * 30) + 50,
-    gamesPlayed: Math.floor(Math.random() * 50) + 20,
-  };
+const EventIcon = ({ type }: { type: string }) => {
+  switch (type) {
+    case "goal": return <span className="text-neon-green">⚽</span>;
+    case "yellow_card": return <span className="text-primary">🟨</span>;
+    case "red_card": return <span className="text-destructive">🟥</span>;
+    case "substitution": return <span>🔄</span>;
+    case "start": return <span className="text-neon-cyan">▶</span>;
+    case "end": return <span className="text-muted-foreground">⏹</span>;
+    default: return <span>📌</span>;
+  }
 };
 
-const StatComparison = ({ 
-  label, 
-  value1, 
-  value2, 
-  suffix = "" 
-}: { 
-  label: string; 
-  value1: number; 
-  value2: number;
-  suffix?: string;
-}) => {
+const StatComparison = ({ label, value1, value2, suffix = "" }: { label: string; value1: number; value2: number; suffix?: string }) => {
   const total = value1 + value2;
   const percent1 = total > 0 ? (value1 / total) * 100 : 50;
-  
+
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-sm">
-        <span className={cn(value1 > value2 ? "text-neon-green font-semibold" : "text-muted-foreground")}>
-          {value1}{suffix}
-        </span>
+        <span className={cn(value1 > value2 ? "text-neon-green font-semibold" : "text-muted-foreground")}>{value1}{suffix}</span>
         <span className="text-muted-foreground text-xs">{label}</span>
-        <span className={cn(value2 > value1 ? "text-neon-green font-semibold" : "text-muted-foreground")}>
-          {value2}{suffix}
-        </span>
+        <span className={cn(value2 > value1 ? "text-neon-green font-semibold" : "text-muted-foreground")}>{value2}{suffix}</span>
       </div>
       <div className="flex h-2 rounded-full overflow-hidden bg-muted">
-        <div 
-          className="bg-neon-cyan transition-all duration-500" 
-          style={{ width: `${percent1}%` }} 
-        />
-        <div 
-          className="bg-neon-pink transition-all duration-500" 
-          style={{ width: `${100 - percent1}%` }} 
-        />
+        <div className="bg-neon-cyan transition-all duration-500" style={{ width: `${percent1}%` }} />
+        <div className="bg-neon-pink transition-all duration-500" style={{ width: `${100 - percent1}%` }} />
       </div>
     </div>
   );
 };
 
-const PlayerCard = ({ player, color }: { player: PlayerStats; color: "cyan" | "pink" }) => {
-  const colorClasses = color === "cyan" 
-    ? "border-neon-cyan/30 bg-neon-cyan/5" 
-    : "border-neon-pink/30 bg-neon-pink/5";
-  
+const PlayerCard = ({ name, profile, score, winner, color }: {
+  name: string; profile: PlayerProfile | null; score: number; winner?: boolean; color: "cyan" | "pink";
+}) => {
+  const colorClasses = color === "cyan" ? "border-neon-cyan/30 bg-neon-cyan/5" : "border-neon-pink/30 bg-neon-pink/5";
+
   return (
     <div className={cn("glass-card rounded-lg p-4 border", colorClasses)}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h4 className={cn("font-bold", player.winner ? "text-neon-green" : "text-foreground")}>
-            {player.name}
-          </h4>
-          <p className="text-xs text-muted-foreground">Rank #{player.ranking}</p>
+          <h4 className={cn("font-bold", winner ? "text-neon-green" : "text-foreground")}>{name}</h4>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold">{player.score}</p>
-          {player.winner && (
-            <Badge className="bg-neon-green/20 text-neon-green text-xs">Winner</Badge>
-          )}
+          <p className="text-2xl font-bold">{score}</p>
+          {winner && <Badge className="bg-neon-green/20 text-neon-green text-xs">Winner</Badge>}
         </div>
       </div>
-
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="glass-card p-2 rounded">
-          <Gamepad2 className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">Games</p>
-          <p className="font-semibold">{player.gamesPlayed}</p>
+      {profile ? (
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="glass-card p-2 rounded">
+            <Gamepad2 className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">Games</p>
+            <p className="font-semibold">{profile.gamesPlayed}</p>
+          </div>
+          <div className="glass-card p-2 rounded">
+            <TrendingUp className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">Win Rate</p>
+            <p className="font-semibold text-neon-green">{profile.winRate}%</p>
+          </div>
+          <div className="glass-card p-2 rounded">
+            <Trophy className="w-4 h-4 mx-auto mb-1 text-primary" />
+            <p className="text-xs text-muted-foreground">Wins</p>
+            <p className="font-semibold">{profile.wins}</p>
+          </div>
         </div>
-        <div className="glass-card p-2 rounded">
-          <TrendingUp className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">Win Rate</p>
-          <p className="font-semibold text-neon-green">{player.winRate}%</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          <Skeleton className="h-16 rounded" />
+          <Skeleton className="h-16 rounded" />
+          <Skeleton className="h-16 rounded" />
         </div>
-        <div className="glass-card p-2 rounded">
-          <Trophy className="w-4 h-4 mx-auto mb-1 text-primary" />
-          <p className="text-xs text-muted-foreground">Rank</p>
-          <p className="font-semibold">#{player.ranking}</p>
-        </div>
-      </div>
-
-      {/* Recent matches */}
-      <div className="mt-3">
-        <p className="text-xs text-muted-foreground mb-2">Recent Matches</p>
-        <div className="space-y-1">
-          {player.history.map((match, i) => (
-            <div key={i} className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground truncate max-w-[100px]">
-                vs {match.opponent}
-              </span>
-              <div className="flex items-center gap-2">
-                <span>{match.score}</span>
-                <Badge 
-                  variant="outline" 
-                  className={cn(
-                    "text-xs px-1.5",
-                    match.result === "W" ? "border-neon-green text-neon-green" : "border-destructive text-destructive"
-                  )}
-                >
-                  {match.result}
-                </Badge>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
 
-export const MatchDetailsModal = ({
-  open,
-  onOpenChange,
-  matchId,
-  player1,
-  player2,
-  round,
-}: MatchDetailsModalProps) => {
-  const player1Stats = generatePlayerStats(player1.name, player1.score, player1.winner);
-  const player2Stats = generatePlayerStats(player2.name, player2.score, player2.winner);
+export const MatchDetailsModal = ({ open, onOpenChange, matchId, player1, player2, round }: MatchDetailsModalProps) => {
+  const [events, setEvents] = useState<MatchEvent[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [player1Profile, setPlayer1Profile] = useState<PlayerProfile | null>(null);
+  const [player2Profile, setPlayer2Profile] = useState<PlayerProfile | null>(null);
 
-  // Adjust possession to equal 100%
-  const totalPossession = player1Stats.stats.possession + player2Stats.stats.possession;
-  player1Stats.stats.possession = Math.round((player1Stats.stats.possession / totalPossession) * 100);
-  player2Stats.stats.possession = 100 - player1Stats.stats.possession;
+  useEffect(() => {
+    if (!open || !matchId) return;
+    loadMatchData();
+
+    const channel = supabase
+      .channel(`match-events-${matchId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "match_events", filter: `match_id=eq.${matchId}` }, (payload) => {
+        setEvents(prev => [...prev, payload.new as MatchEvent].sort((a, b) => a.minute - b.minute));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [open, matchId]);
+
+  const loadMatchData = async () => {
+    setLoadingEvents(true);
+
+    // Fetch match events
+    const { data: eventsData } = await supabase
+      .from("match_events")
+      .select("*")
+      .eq("match_id", matchId)
+      .order("minute", { ascending: true });
+
+    setEvents(eventsData || []);
+    setLoadingEvents(false);
+
+    // Fetch match to get player IDs
+    const { data: match } = await supabase.from("matches").select("player1_id, player2_id").eq("id", matchId).single();
+    if (!match) return;
+
+    // Load player profiles in parallel
+    if (match.player1_id) loadPlayerProfile(match.player1_id, setPlayer1Profile);
+    if (match.player2_id) loadPlayerProfile(match.player2_id, setPlayer2Profile);
+  };
+
+  const loadPlayerProfile = async (userId: string, setter: (p: PlayerProfile) => void) => {
+    const { data: matches } = await supabase
+      .from("matches")
+      .select("winner_id")
+      .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+      .eq("status", "completed");
+
+    const gamesPlayed = matches?.length || 0;
+    const wins = matches?.filter(m => m.winner_id === userId).length || 0;
+    const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+    setter({ gamesPlayed, wins, winRate });
+  };
+
+  // Compute event-based stats
+  const p1Goals = events.filter(e => e.event_type === "goal" && e.user_id === null).length; // fallback
+  const p2Goals = events.filter(e => e.event_type === "goal").length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,91 +174,70 @@ export const MatchDetailsModal = ({
               <Swords className="w-5 h-5 text-primary" />
               <span className="bg-gradient-gold bg-clip-text text-transparent">Match Details</span>
             </DialogTitle>
-            <Badge variant="outline" className="text-neon-cyan border-neon-cyan">
-              {round}
-            </Badge>
+            <Badge variant="outline" className="text-neon-cyan border-neon-cyan">{round}</Badge>
           </div>
         </DialogHeader>
 
         {/* Score Header */}
         <div className="flex items-center justify-center gap-4 py-4 border-y border-border/50">
           <div className="text-center flex-1">
-            <p className={cn("font-bold text-lg", player1.winner && "text-neon-green")}>
-              {player1.name}
-            </p>
+            <p className={cn("font-bold text-lg", player1.winner && "text-neon-green")}>{player1.name}</p>
           </div>
           <div className="flex items-center gap-3 px-6 py-3 glass-card rounded-lg">
-            <span className={cn("text-3xl font-bold", player1.winner && "text-neon-green")}>
-              {player1.score}
-            </span>
+            <span className={cn("text-3xl font-bold", player1.winner && "text-neon-green")}>{player1.score}</span>
             <span className="text-muted-foreground">-</span>
-            <span className={cn("text-3xl font-bold", player2.winner && "text-neon-green")}>
-              {player2.score}
-            </span>
+            <span className={cn("text-3xl font-bold", player2.winner && "text-neon-green")}>{player2.score}</span>
           </div>
           <div className="text-center flex-1">
-            <p className={cn("font-bold text-lg", player2.winner && "text-neon-green")}>
-              {player2.name}
-            </p>
+            <p className={cn("font-bold text-lg", player2.winner && "text-neon-green")}>{player2.name}</p>
           </div>
         </div>
 
-        {/* Match Stats Comparison */}
-        <div className="space-y-3 py-4">
+        {/* Match Events Timeline */}
+        <div className="py-4">
           <div className="flex items-center gap-2 mb-4">
-            <Target className="w-4 h-4 text-neon-cyan" />
-            <h3 className="font-semibold">Match Statistics</h3>
+            <Clock className="w-4 h-4 text-neon-cyan" />
+            <h3 className="font-semibold">Match Events</h3>
           </div>
-          
-          <StatComparison 
-            label="Possession" 
-            value1={player1Stats.stats.possession} 
-            value2={player2Stats.stats.possession}
-            suffix="%"
-          />
-          <StatComparison 
-            label="Shots" 
-            value1={player1Stats.stats.shots} 
-            value2={player2Stats.stats.shots}
-          />
-          <StatComparison 
-            label="Shots on Target" 
-            value1={player1Stats.stats.shotsOnTarget} 
-            value2={player2Stats.stats.shotsOnTarget}
-          />
-          <StatComparison 
-            label="Pass Accuracy" 
-            value1={player1Stats.stats.passAccuracy} 
-            value2={player2Stats.stats.passAccuracy}
-            suffix="%"
-          />
-          <StatComparison 
-            label="Tackles" 
-            value1={player1Stats.stats.tackles} 
-            value2={player2Stats.stats.tackles}
-          />
-          <StatComparison 
-            label="Corners" 
-            value1={player1Stats.stats.corners} 
-            value2={player2Stats.stats.corners}
-          />
-          <StatComparison 
-            label="Fouls" 
-            value1={player1Stats.stats.fouls} 
-            value2={player2Stats.stats.fouls}
-          />
+          {loadingEvents ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-3/4" />
+            </div>
+          ) : events.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No events recorded yet</p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {events.map(event => (
+                <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/30 text-sm">
+                  <span className="text-xs font-mono text-neon-green w-8 shrink-0">{event.minute}'</span>
+                  <EventIcon type={event.event_type} />
+                  <span className="text-foreground capitalize">{event.event_type.replace("_", " ")}</span>
+                  {event.description && <span className="text-muted-foreground text-xs ml-auto truncate max-w-[150px]">{event.description}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Player Stats Comparison */}
+        {player1Profile && player2Profile && (
+          <div className="space-y-3 py-4 border-t border-border/50">
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="w-4 h-4 text-neon-cyan" />
+              <h3 className="font-semibold">Player Comparison</h3>
+            </div>
+            <StatComparison label="Win Rate" value1={player1Profile.winRate} value2={player2Profile.winRate} suffix="%" />
+            <StatComparison label="Total Games" value1={player1Profile.gamesPlayed} value2={player2Profile.gamesPlayed} />
+            <StatComparison label="Total Wins" value1={player1Profile.wins} value2={player2Profile.wins} />
+          </div>
+        )}
 
         {/* Player Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border/50">
-          <PlayerCard player={player1Stats} color="cyan" />
-          <PlayerCard player={player2Stats} color="pink" />
-        </div>
-
-        {/* Match Time */}
-        <div className="flex items-center justify-center gap-2 pt-4 text-sm text-muted-foreground">
-          <Clock className="w-4 h-4" />
-          <span>Full Time • 90:00</span>
+          <PlayerCard name={player1.name} profile={player1Profile} score={player1.score} winner={player1.winner} color="cyan" />
+          <PlayerCard name={player2.name} profile={player2Profile} score={player2.score} winner={player2.winner} color="pink" />
         </div>
       </DialogContent>
     </Dialog>

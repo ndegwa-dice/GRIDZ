@@ -10,6 +10,7 @@ import Tournaments from "./pages/Tournaments";
 import About from "./pages/About";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import TournamentDetail from "./pages/TournamentDetail";
 
 // Dashboard imports
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/tournaments" element={<Tournaments />} />
+            <Route path="/tournaments/:id" element={<TournamentDetail />} />
             <Route path="/about" element={<About />} />
             
             {/* Dashboard routes - protected */}
