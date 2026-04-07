@@ -111,37 +111,28 @@ export const useTournaments = () => {
 
   const joinTournament = async (tournamentId: string, userId: string) => {
     try {
-      const { data, error } = await supabase.rpc('join_tournament', {
+      const { error } = await supabase.rpc('join_tournament', {
         p_tournament_id: tournamentId,
         p_user_id: userId
       });
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; new_balance?: number };
-
-      if (!result.success) {
-        toast({
-          title: 'Cannot Join Tournament',
-          description: result.error,
-          variant: 'destructive',
-        });
-        return false;
-      }
-
       toast({
         title: 'Successfully Joined!',
-        description: `You've joined the tournament. New balance: ${result.new_balance} GZC`,
+        description: "You've been registered for the tournament.",
       });
 
-      // Reload tournaments to update counts
       await loadTournaments();
       return true;
     } catch (error: any) {
       console.error('Error joining tournament:', error);
+      const msg = error.code === '23505'
+        ? 'You have already joined this tournament.'
+        : error.message || 'Failed to join tournament';
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to join tournament',
+        title: 'Cannot Join Tournament',
+        description: msg,
         variant: 'destructive',
       });
       return false;
