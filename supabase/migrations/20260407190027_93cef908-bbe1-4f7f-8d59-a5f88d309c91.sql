@@ -1,0 +1,1 @@
+UPDATE tournaments SET current_participants = 4 WHERE id = '2976994e-aaf9-4d9f-809c-6b911933c79b';
