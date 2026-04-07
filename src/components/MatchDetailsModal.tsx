@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Target, Gamepad2, TrendingUp, Clock, Swords } from "lucide-react";
+import { Trophy, Target, Gamepad2, TrendingUp, Clock, Swords, Calendar, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +22,20 @@ interface MatchEvent {
   description: string | null;
   user_id: string | null;
   created_at: string;
+}
+
+interface MatchRecord {
+  id: string;
+  player1_score: number;
+  player2_score: number;
+  winner_id: string | null;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  player1_id: string | null;
+  player2_id: string | null;
+  round: number;
+  match_order: number;
 }
 
 interface PlayerProfile {
@@ -109,18 +123,31 @@ const PlayerCard = ({ name, profile, score, winner, color }: {
 export const MatchDetailsModal = ({ open, onOpenChange, matchId, player1, player2, round }: MatchDetailsModalProps) => {
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [matchRecord, setMatchRecord] = useState<MatchRecord | null>(null);
   const [player1Profile, setPlayer1Profile] = useState<PlayerProfile | null>(null);
   const [player2Profile, setPlayer2Profile] = useState<PlayerProfile | null>(null);
+
+  // Use real DB scores if available, fallback to props
+  const realPlayer1 = matchRecord ? {
+    name: player1.name,
+    score: matchRecord.player1_score,
+    winner: matchRecord.winner_id !== null && matchRecord.winner_id === matchRecord.player1_id,
+  } : player1;
+
+  const realPlayer2 = matchRecord ? {
+    name: player2.name,
+    score: matchRecord.player2_score,
+    winner: matchRecord.winner_id !== null && matchRecord.winner_id === matchRecord.player2_id,
+  } : player2;
 
   useEffect(() => {
     if (!open || !matchId) return;
     loadMatchData();
 
     const channel = supabase
-      .channel(`match-events-${matchId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "match_events", filter: `match_id=eq.${matchId}` }, (payload) => {
-        setEvents(prev => [...prev, payload.new as MatchEvent].sort((a, b) => a.minute - b.minute));
-      })
+      .channel(`match-details-${matchId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "match_events", filter: `match_id=eq.${matchId}` }, () => loadMatchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "matches", filter: `id=eq.${matchId}` }, () => loadMatchData())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -129,19 +156,18 @@ export const MatchDetailsModal = ({ open, onOpenChange, matchId, player1, player
   const loadMatchData = async () => {
     setLoadingEvents(true);
 
-    // Fetch match events
-    const { data: eventsData } = await supabase
-      .from("match_events")
-      .select("*")
-      .eq("match_id", matchId)
-      .order("minute", { ascending: true });
+    // Fetch match record and events in parallel
+    const [matchRes, eventsRes] = await Promise.all([
+      supabase.from("matches").select("*").eq("id", matchId).single(),
+      supabase.from("match_events").select("*").eq("match_id", matchId).order("minute", { ascending: true }),
+    ]);
 
-    setEvents(eventsData || []);
+    setEvents(eventsRes.data || []);
     setLoadingEvents(false);
 
-    // Fetch match to get player IDs
-    const { data: match } = await supabase.from("matches").select("player1_id, player2_id").eq("id", matchId).single();
+    const match = matchRes.data;
     if (!match) return;
+    setMatchRecord(match as MatchRecord);
 
     // Load player profiles in parallel
     if (match.player1_id) loadPlayerProfile(match.player1_id, setPlayer1Profile);
@@ -161,9 +187,22 @@ export const MatchDetailsModal = ({ open, onOpenChange, matchId, player1, player
     setter({ gamesPlayed, wins, winRate });
   };
 
-  // Compute event-based stats
-  const p1Goals = events.filter(e => e.event_type === "goal" && e.user_id === null).length; // fallback
-  const p2Goals = events.filter(e => e.event_type === "goal").length;
+  const formatDate = (date: string | null) => {
+    if (!date) return null;
+    return new Date(date).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  };
+
+  const matchDuration = matchRecord?.started_at && matchRecord?.completed_at
+    ? Math.round((new Date(matchRecord.completed_at).getTime() - new Date(matchRecord.started_at).getTime()) / 60000)
+    : null;
+
+  const statusLabel = matchRecord?.status === "completed" ? "Completed" : matchRecord?.status === "live" ? "Live" : "Pending";
+  const statusColor = matchRecord?.status === "completed" ? "bg-neon-green/20 text-neon-green border-neon-green/30"
+    : matchRecord?.status === "live" ? "bg-destructive/20 text-destructive border-destructive/30"
+    : "bg-muted text-muted-foreground border-border";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,24 +213,66 @@ export const MatchDetailsModal = ({ open, onOpenChange, matchId, player1, player
               <Swords className="w-5 h-5 text-primary" />
               <span className="bg-gradient-gold bg-clip-text text-transparent">Match Details</span>
             </DialogTitle>
-            <Badge variant="outline" className="text-neon-cyan border-neon-cyan">{round}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={cn("text-xs", statusColor)}>{statusLabel}</Badge>
+              <Badge variant="outline" className="text-neon-cyan border-neon-cyan">{round}</Badge>
+            </div>
           </div>
         </DialogHeader>
 
-        {/* Score Header */}
+        {/* Score Header - uses real DB scores */}
         <div className="flex items-center justify-center gap-4 py-4 border-y border-border/50">
           <div className="text-center flex-1">
-            <p className={cn("font-bold text-lg", player1.winner && "text-neon-green")}>{player1.name}</p>
+            <p className={cn("font-bold text-lg", realPlayer1.winner && "text-neon-green")}>{realPlayer1.name}</p>
           </div>
           <div className="flex items-center gap-3 px-6 py-3 glass-card rounded-lg">
-            <span className={cn("text-3xl font-bold", player1.winner && "text-neon-green")}>{player1.score}</span>
+            <span className={cn("text-3xl font-bold", realPlayer1.winner && "text-neon-green")}>{realPlayer1.score}</span>
             <span className="text-muted-foreground">-</span>
-            <span className={cn("text-3xl font-bold", player2.winner && "text-neon-green")}>{player2.score}</span>
+            <span className={cn("text-3xl font-bold", realPlayer2.winner && "text-neon-green")}>{realPlayer2.score}</span>
           </div>
           <div className="text-center flex-1">
-            <p className={cn("font-bold text-lg", player2.winner && "text-neon-green")}>{player2.name}</p>
+            <p className={cn("font-bold text-lg", realPlayer2.winner && "text-neon-green")}>{realPlayer2.name}</p>
           </div>
         </div>
+
+        {/* Match Info Bar - real data from DB */}
+        {matchRecord && (matchRecord.status === "completed" || matchRecord.status === "live") && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-3">
+            {matchRecord.started_at && (
+              <div className="glass-card p-3 rounded-lg text-center">
+                <Calendar className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                <p className="text-[10px] text-muted-foreground uppercase">Started</p>
+                <p className="text-xs font-medium text-foreground">{formatDate(matchRecord.started_at)}</p>
+              </div>
+            )}
+            {matchRecord.completed_at && (
+              <div className="glass-card p-3 rounded-lg text-center">
+                <CheckCircle className="w-4 h-4 mx-auto mb-1 text-neon-green" />
+                <p className="text-[10px] text-muted-foreground uppercase">Finished</p>
+                <p className="text-xs font-medium text-foreground">{formatDate(matchRecord.completed_at)}</p>
+              </div>
+            )}
+            {matchDuration !== null && (
+              <div className="glass-card p-3 rounded-lg text-center">
+                <Clock className="w-4 h-4 mx-auto mb-1 text-neon-cyan" />
+                <p className="text-[10px] text-muted-foreground uppercase">Duration</p>
+                <p className="text-xs font-medium text-foreground">{matchDuration} min</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Winner Banner */}
+        {matchRecord?.status === "completed" && (realPlayer1.winner || realPlayer2.winner) && (
+          <div className="p-3 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-lg border border-primary/30 text-center">
+            <Trophy className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-xs text-muted-foreground">Winner</p>
+            <p className="text-lg font-bold text-primary">{realPlayer1.winner ? realPlayer1.name : realPlayer2.name}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Final Score: {realPlayer1.score} - {realPlayer2.score}
+            </p>
+          </div>
+        )}
 
         {/* Match Events Timeline */}
         <div className="py-4">
@@ -236,8 +317,8 @@ export const MatchDetailsModal = ({ open, onOpenChange, matchId, player1, player
 
         {/* Player Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border/50">
-          <PlayerCard name={player1.name} profile={player1Profile} score={player1.score} winner={player1.winner} color="cyan" />
-          <PlayerCard name={player2.name} profile={player2Profile} score={player2.score} winner={player2.winner} color="pink" />
+          <PlayerCard name={realPlayer1.name} profile={player1Profile} score={realPlayer1.score} winner={realPlayer1.winner} color="cyan" />
+          <PlayerCard name={realPlayer2.name} profile={player2Profile} score={realPlayer2.score} winner={realPlayer2.winner} color="pink" />
         </div>
       </DialogContent>
     </Dialog>
